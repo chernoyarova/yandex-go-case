@@ -249,7 +249,11 @@
   .cutrow .c p{font-size:15.5px;color:var(--ink-2)}
   @media(max-width:600px){.cutrow{grid-template-columns:1fr;gap:7px}}
 
-  footer{padding:70px 0;color:var(--ink-3);font-size:14px;text-align:center;font-family:var(--disp);font-weight:400;letter-spacing:-.01em}
+  footer{padding:56px 0;font-size:14px;font-family:var(--body);font-weight:500}
+  footer .fcols{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;align-items:center;color:var(--ink-2);letter-spacing:-.01em}
+  footer .sep{color:var(--ink-3)}
+  footer a{color:var(--ink-2);text-decoration:none;transition:.15s}
+  footer a:hover{color:var(--ink)}
 
   /* lightbox */
   .lb{position:fixed;inset:0;background:rgba(20,19,17,.9);display:none;align-items:center;justify-content:center;z-index:100;padding:34px;cursor:zoom-out}
@@ -667,6 +671,16 @@
     <b>Деньги: зарабатываем ли больше Маркета?</b> Раньше тут был Маркет и тоже приносил деньги. Сравниваем не оборот, а прибыль с показа (у Лавки ещё расходы на доставку). <b>Как ловим:</b> одной группе показываем Маркет, другой - Лавку, считаем прибыль с поездки. Больше у Лавки - выигрываем, меньше - Маркет был выгоднее. Итог по супераппу = прибыль от Лавки минус потери на Маркете минус расходы. Пользу в долгую (рост числа людей с 2+ сервисами) считаем отдельно и минусом по деньгам не оправдываем.
   </div>
 </div></section>
+
+<footer><div class="wrap">
+  <div class="fcols">
+    <span>Продакт-кейс · Яндекс Go ·</span>
+    <a href="https://www.figma.com/design/M4Sg6iW3KqH6uImnaOrzG3/%D0%AF%D0%BD%D0%B4%D0%B5%D0%BA%D1%81-Go?t=dYR9WV8BlbxppO2T-0" target="_blank" rel="noopener">Макет в Figma ↗</a>
+    <span class="sep">|</span>
+    <span>Мария Черноярова ·</span>
+    <a href="https://t.me/monrech" target="_blank" rel="noopener">Tg · @monrech</a>
+  </div>
+</div></footer>
 
 <div class="lb" id="lb" onclick="this.classList.remove('show')"><img id="lbimg" src="" alt=""></div>
 <script>
