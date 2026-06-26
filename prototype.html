@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Прототип — контекстный движок дистрибуции</title>
+<style>
+  :root{
+    --yellow:#FFCC00; --yellow-soft:#FFDB4D;
+    --ink:#1A1A19; --ink-2:#6B6A66; --line:#ECEBE8;
+    --bg:#E9E8E5; --card:#FFFFFF; --lavka:#3B4AE0; --green:#1FA84B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"YS Text","Yandex Sans Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;gap:18px;padding:26px 14px 50px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .head{text-align:center;max-width:560px}
+  .head .go{display:inline-flex;width:38px;height:38px;border-radius:11px;background:#000;color:var(--yellow);
+    align-items:center;justify-content:center;font-weight:800;font-style:italic;font-size:18px;letter-spacing:-1px;margin-bottom:10px}
+  .head h1{font-size:21px;font-weight:800;letter-spacing:-.5px;line-height:1.15}
+  .head p{font-size:13.5px;color:var(--ink-2);margin-top:6px}
+
+  /* scenario tabs */
+  .tabs{display:flex;gap:8px;background:#fff;padding:6px;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.06);flex-wrap:wrap;justify-content:center}
+  .tabs button{border:0;background:transparent;padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:.15s}
+  .tabs button.on{background:var(--ink);color:#fff}
+
+  .stepwrap{height:20px}
+  .steps{display:flex;gap:7px;align-items:center;font-size:11.5px;color:var(--ink-2);font-weight:700}
+  .steps .s{display:flex;align-items:center;gap:6px;opacity:.38;transition:.2s}
+  .steps .s.active{opacity:1;color:var(--ink)}
+  .steps .dot{width:20px;height:20px;border-radius:50%;background:#D9D8D4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+  .steps .s.active .dot{background:var(--ink)}
+  .steps .bar{width:14px;height:2px;background:#D9D8D4;border-radius:2px}
+
+  /* phone */
+  .phone{width:340px;height:712px;background:#fff;border-radius:42px;position:relative;overflow:hidden;
+    box-shadow:0 26px 70px rgba(0,0,0,.22), inset 0 0 0 9px #111;}
+  .notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:108px;height:26px;background:#111;border-radius:14px;z-index:30}
+  .status{position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:center;justify-content:space-between;
+    padding:18px 26px 0;font-size:13px;font-weight:700;z-index:20}
+  .backbtn{position:absolute;top:54px;left:14px;z-index:25;width:34px;height:34px;border-radius:50%;background:#fff;border:0;
+    box-shadow:0 4px 12px rgba(0,0,0,.12);font-size:17px;cursor:pointer;display:none}
+  .backbtn.show{display:block}
+
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;padding-top:46px}
+  .screen.show{display:flex;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
+
+  /* map */
+  .map{height:215px;background:linear-gradient(135deg,#F3F2EF 0%,#E9F3EC 50%,#EFEFEA 100%);position:relative;overflow:hidden;flex:none}
+  .road{position:absolute;height:5px;background:#C9C8C4;border-radius:5px}
+  .route{position:absolute;height:5px;background:var(--green);border-radius:5px}
+  .pin{position:absolute;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 4px 10px rgba(0,0,0,.18)}
+  .pin.car{background:var(--yellow);color:#000}
+  .pin.home{background:#fff}
+  .topchip{position:absolute;top:14px;left:14px;right:14px;background:#fff;border-radius:16px;padding:10px 13px;
+    display:flex;align-items:center;gap:9px;box-shadow:0 6px 18px rgba(0,0,0,.10);font-size:12.5px;font-weight:600}
+  .topchip .ic{width:24px;height:24px;border-radius:7px;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+
+  .sheet{flex:1;background:#fff;border-radius:22px 22px 0 0;margin-top:-22px;position:relative;z-index:5;
+    padding:16px 16px 16px;display:flex;flex-direction:column;gap:13px;overflow-y:auto}
+  .grab{width:38px;height:5px;background:#E2E1DD;border-radius:3px;align-self:center}
+
+  /* tariffs (F0) */
+  .addr{background:#F6F5F2;border-radius:14px;padding:4px}
+  .addr .row{display:flex;align-items:center;gap:10px;padding:11px 12px}
+  .addr .row+.row{border-top:1px solid #ECEBE8}
+  .addr .dot2{width:9px;height:9px;border-radius:50%;flex:none}
+  .addr .a-tx{flex:1;font-size:14px}
+  .addr .a-tx span{display:block;font-size:11.5px;color:var(--ink-2)}
+  .tariffs{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px}
+  .tf{flex:none;width:96px;background:#F6F5F2;border-radius:14px;padding:10px;border:2px solid transparent;cursor:pointer}
+  .tf.on{border-color:#000;background:#fff}
+  .tf .em{font-size:24px}
+  .tf .nm{font-size:13px;font-weight:700;margin-top:6px}
+  .tf .pr{font-size:13px;color:var(--ink-2)}
+
+  .driver{display:flex;align-items:center;gap:12px}
+  .driver .ava{width:46px;height:46px;border-radius:50%;background:#D8C9F0;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .driver .info{flex:1}.driver .info b{font-size:15px}.driver .info span{display:block;font-size:12.5px;color:var(--ink-2)}
+  .eta-badge{background:#F1F0ED;border-radius:12px;padding:7px 11px;font-size:13px;font-weight:800;text-align:center}
+  .eta-badge em{display:block;font-style:normal;font-size:10.5px;color:var(--ink-2);font-weight:600}
+
+  .toggle{display:flex;background:#F1F0ED;border-radius:13px;padding:4px;font-size:12.5px;font-weight:700}
+  .toggle button{flex:1;border:0;background:transparent;padding:8px;border-radius:10px;cursor:pointer;color:var(--ink-2);transition:.15s}
+  .toggle button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .sectlabel{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-2)}
+
+  .recs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rec{background:#F6F5F2;border-radius:14px;overflow:hidden}
+  .rec .img{height:78px;display:flex;align-items:center;justify-content:center;font-size:32px;background:#EDECE8}
+  .rec .t{padding:7px 9px;font-size:11.5px;line-height:1.2}.rec .t b{display:block;color:var(--green);font-size:12.5px;margin-top:2px}
+  .note{font-size:11.5px;color:var(--ink-2);text-align:center;margin-top:8px}
+
+  .ctx{border-radius:18px;padding:15px;background:linear-gradient(135deg,#EEF0FF 0%,#DCE0FF 100%);position:relative;border:1px solid #CBD2FF}
+  .ctx .tag{display:inline-block;background:var(--lavka);color:#fff;font-size:10px;font-weight:800;letter-spacing:.4px;padding:4px 9px;border-radius:7px;margin-bottom:9px}
+  .ctx h3{font-size:18px;line-height:1.15;font-weight:800;margin-bottom:5px}
+  .ctx p{font-size:12.5px;color:#3a3f6b;line-height:1.35;margin-bottom:12px}
+  .ctx .mini{display:flex;gap:6px;margin-bottom:12px}
+  .ctx .mini .m{flex:1;background:#fff;border-radius:10px;height:46px;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .ctx .sum{font-size:12px;font-weight:700;color:#2733b0;margin-bottom:12px}
+  .ctx .dismiss{position:absolute;top:12px;right:12px;font-size:15px;color:#8088c0;cursor:pointer}
+
+  .cta{border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;width:100%;background:#000;color:#fff;transition:.15s}
+  .cta:active{transform:scale(.98)}
+  .cta.yellow{background:var(--yellow);color:#000}
+  .cta.lavka{background:var(--lavka);color:#fff}
+  .cta.ghost{background:#F1F0ED;color:var(--ink)}
+
+  /* Lavka basket */
+  .lv-head{background:var(--lavka);color:#fff;padding:15px 16px;display:flex;align-items:center;gap:10px;flex:none}
+  .lv-head .logo{width:30px;height:30px;border-radius:9px;background:#fff;color:var(--lavka);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+  .lv-head b{font-size:15px}
+  .lv-deliver{background:#EEF0FF;color:#2733b0;border-radius:14px;padding:11px 13px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .item{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .item .ph{width:42px;height:42px;border-radius:11px;background:#F2F1EE;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+  .item .nm{flex:1;font-size:13.5px}.item .nm span{display:block;font-size:11.5px;color:var(--ink-2)}
+  .item .pr{font-size:13.5px;font-weight:700}
+  .total{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:800;padding-top:2px}
+
+  /* confirm */
+  .confirm{align-items:center;justify-content:flex-start;text-align:center;gap:15px;padding:40px 24px 24px}
+  .confirm .ok{width:78px;height:78px;border-radius:50%;background:#E7F7ec;display:flex;align-items:center;justify-content:center;font-size:38px}
+  .confirm h2{font-size:22px;font-weight:800;line-height:1.15}
+  .confirm p{font-size:13px;color:var(--ink-2);line-height:1.4}
+  .tracks{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .track{display:flex;align-items:center;gap:11px;background:#F6F5F2;border-radius:14px;padding:12px 13px;text-align:left}
+  .track .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+  .track .ic.t1{background:var(--yellow)}.track .ic.t2{background:var(--lavka)}
+  .track .tx{flex:1;font-size:12.5px}.track .tx b{display:block;font-size:13.5px}
+  .track .tm{font-size:13px;font-weight:800}
+
+  /* HOME mockup (scenarios 2 & 3) */
+  .home-top{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 2px;flex:none}
+  .home-top .glogo{font-weight:800;font-style:italic;font-size:22px;background:var(--yellow);width:42px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .home-top .r{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-2)}
+  .home-scroll{flex:1;overflow-y:auto;padding:6px 16px 16px}
+  .home-addr{font-size:13px;color:var(--ink-2);margin:4px 0 8px}
+  .ctx-header{font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1.1;margin-bottom:12px}
+  .cta-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .cchip{border:0;border-radius:999px;padding:11px 16px;font-size:13.5px;font-weight:700;cursor:pointer}
+  .cchip.y{background:var(--yellow);color:#000}.cchip.l{background:var(--lavka);color:#fff}.cchip.g{background:#F1F0ED;color:var(--ink)}
+  .winback{border-radius:16px;padding:14px;background:linear-gradient(135deg,#EEF0FF 0%,#E3E7FF 100%);border:1px solid #CBD2FF;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .winback .em{font-size:26px}.winback .tx{flex:1;font-size:13px;font-weight:600;color:#2733b0}
+  .winback button{border:0;background:var(--lavka);color:#fff;font-weight:700;font-size:12.5px;padding:9px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
+  .achips{display:flex;gap:8px;overflow-x:auto;margin:10px 0 14px}
+  .achip{flex:none;background:#F1F0ED;border-radius:999px;padding:10px 14px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+  .iconize{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px;margin-top:6px}
+  .ic{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:var(--ink-2);font-weight:600}
+  .ic .sq{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .res-toast{background:#000;color:#fff;border-radius:12px;padding:10px 13px;font-size:12.5px;font-weight:600;display:none;align-items:center;gap:8px;margin-bottom:8px}
+  .res-toast.show{display:flex}
+
+  .hint{font-size:12px;color:var(--ink-2);max-width:560px;text-align:center}
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <div class="go">Go</div>
+    <h1>Контекстный движок дистрибуции</h1>
+    <p>Один движок «контекст → next-best-action» в трёх сценариях. Кликабельно.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="on" id="tab-home" onclick="scenario('home')">🏠 Поездка домой</button>
+    <button id="tab-rain" onclick="scenario('rain')">🌧 Дождь / пробки</button>
+    <button id="tab-back" onclick="scenario('back')">✨ Возврат</button>
+  </div>
+
+  <div class="stepwrap">
+    <div class="steps" id="stepper">
+      <div class="s active" id="st1"><span class="dot">1</span> Заказ</div><span class="bar"></span>
+      <div class="s" id="st2"><span class="dot">2</span> Поездка</div><span class="bar"></span>
+      <div class="s" id="st3"><span class="dot">3</span> Лавка</div><span class="bar"></span>
+      <div class="s" id="st4"><span class="dot">4</span> Готово</div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <button class="backbtn" id="back" onclick="goBack()">←</button>
+
+    <!-- ===================== SCENARIO: HOME (flagship) ===================== -->
+    <!-- F0 order taxi -->
+    <div class="screen show" data-sc="home" id="scr-f0">
+      <div class="status"><span>16:22</span><span>📶 🔋</span></div>
+      <div class="map">
+        <div class="road" style="top:120px;left:20px;width:300px;transform:rotate(-6deg)"></div>
+        <div class="road" style="top:60px;left:130px;width:5px;height:120px;"></div>
+        <div class="route" style="top:118px;left:40px;width:200px;transform:rotate(-6deg)"></div>
+        <div class="pin car" style="top:104px;left:38px">🚕</div>
+        <div class="pin home" style="top:96px;left:228px">🏠</div>
+      </div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="addr">
+          <div class="row"><span class="dot2" style="background:#000"></span><div class="a-tx">Бизнес-центр «Гончарная»<span>Подача · 3 мин</span></div></div>
+          <div class="row"><span class="dot2" style="background:var(--green)"></span><div class="a-tx">Дом<span>Прибытие ~16:50</span></div></div>
+        </div>
+        <div class="sectlabel">Тариф</div>
+        <div class="tariffs">
+          <div class="tf on"><div class="em">🚕</div><div class="nm">Эконом</div><div class="pr">580 ₽</div></div>
+          <div class="tf"><div class="em">🚙</div><div class="nm">Комфорт</div><div class="pr">670 ₽</div></div>
+          <div class="tf"><div class="em">✨</div><div class="nm">Комфорт+</div><div class="pr">810 ₽</div></div>
+        </div>
+        <button class="cta yellow" onclick="goHome(1)">Заказать · 580 ₽</button>
+        <div class="note">Система фиксирует: назначение = дом, ETA 16:50</div>
+      </div>
+    </div>
+
+    <!-- F1 in-ride -->
+    <div class="screen" data-sc="home" id="scr-f1">
+      <div class="status"><span>16:25</span><span>📶 🔋</span></div>
+      <div class="map">
+        <div class="road" style="top:120px;left:20px;width:300px;transform:rotate(-6deg)"></div>
+        <div class="route" style="top:118px;left:40px;width:150px;transform:rotate(-6deg)"></div>
+        <div class="pin car" style="top:110px;left:120px">🚕</div>
+        <div class="pin home" style="top:96px;left:228px">🏠</div>
+        <div class="topchip"><span class="ic">🚦</span><span>Местами пробки, но едем по графику</span></div>
+      </div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="driver">
+          <div class="ava">🗿</div>
+          <div class="info"><b>Александр · Kia Rio</b><span>В пути · везёт вас домой</span></div>
+          <div class="eta-badge">16:50<em>дома</em></div>
+        </div>
+        <div class="toggle">
+          <button id="tgNow" onclick="setMode('now')">Сейчас</button>
+          <button class="on" id="tgNew" onclick="setMode('new')">Стало</button>
+        </div>
+        <div id="modeNew">
+          <div class="ctx">
+            <span class="dismiss" onclick="setMode('now')">✕</span>
+            <span class="tag">🏠 ЕДЕТЕ ДОМОЙ · К ПРИЕЗДУ</span>
+            <h3>Привезём продукты к 16:50</h3>
+            <p>Как раз к вашему приезду. Собрали ваш обычный набор из Лавки.</p>
+            <div class="mini"><div class="m">🥛</div><div class="m">🍞</div><div class="m">🥚</div><div class="m">🧀</div></div>
+            <div class="sum">6 товаров · ~890 ₽</div>
+            <button class="cta lavka" onclick="goHome(2)">Собрать корзину →</button>
+          </div>
+        </div>
+        <div id="modeNow" style="display:none">
+          <div class="sectlabel">Рекомендуем вам</div>
+          <div class="recs">
+            <div class="rec"><div class="img">🪑</div><div class="t">IKEA Обувница, бамбук<b>3 042 ₽</b></div></div>
+            <div class="rec"><div class="img">👜</div><div class="t">Сумка кросс-боди<b>1 571 ₽</b></div></div>
+          </div>
+          <div class="note">Текущие реки — товары Маркета, мимо интента «еду домой»</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F2 Lavka basket -->
+    <div class="screen" data-sc="home" id="scr-f2">
+      <div class="status"><span>16:25</span><span>📶 🔋</span></div>
+      <div class="lv-head"><span class="logo">Л</span><b>Лавка · ваш обычный набор</b></div>
+      <div class="sheet" style="margin-top:0;border-radius:0">
+        <div class="lv-deliver">⏱️ Доставим к&nbsp;<b>16:50</b>&nbsp;— к вашему приезду домой</div>
+        <div class="item"><div class="ph">🥛</div><div class="nm">Молоко «Домик в деревне»<span>1 шт</span></div><div class="pr">89 ₽</div></div>
+        <div class="item"><div class="ph">🍞</div><div class="nm">Хлеб бородинский<span>1 шт</span></div><div class="pr">59 ₽</div></div>
+        <div class="item"><div class="ph">🥚</div><div class="nm">Яйца С1, 10 шт<span>1 уп</span></div><div class="pr">129 ₽</div></div>
+        <div class="item"><div class="ph">🧀</div><div class="nm">Сыр Российский<span>200 г</span></div><div class="pr">219 ₽</div></div>
+        <div class="item"><div class="ph">🍅</div><div class="nm">Помидоры черри<span>250 г</span></div><div class="pr">179 ₽</div></div>
+        <div class="item"><div class="ph">🥑</div><div class="nm">Авокадо спелое<span>2 шт</span></div><div class="pr">198 ₽</div></div>
+        <div class="total"><span>Итого</span><span>873 ₽</span></div>
+        <button class="cta lavka" onclick="goHome(3)">Заказать за 873 ₽</button>
+        <button class="cta ghost" onclick="goHome(1)">Изменить набор</button>
+      </div>
+    </div>
+
+    <!-- F3 confirm -->
+    <div class="screen" data-sc="home" id="scr-f3">
+      <div class="status"><span>16:26</span><span>📶 🔋</span></div>
+      <div class="sheet confirm" style="margin-top:0;border-radius:0">
+        <div class="ok">✅</div>
+        <h2>Такси и Лавка<br>приедут вместе</h2>
+        <p>Курьер Лавки подгадает доставку под ваше прибытие — к ~16:50.</p>
+        <div class="tracks">
+          <div class="track"><div class="ic t1">🚕</div><div class="tx"><b>Такси домой</b>Александр · Kia Rio</div><div class="tm">16:50</div></div>
+          <div class="track"><div class="ic t2">🛍️</div><div class="tx"><b>Лавка · 6 товаров</b>Доставка к приезду</div><div class="tm">~16:50</div></div>
+        </div>
+        <button class="cta" style="margin-top:6px" onclick="goHome(0)">Готово</button>
+      </div>
+    </div>
+
+    <!-- ===================== SCENARIO: RAIN / TRAFFIC ===================== -->
+    <div class="screen" data-sc="rain" id="scr-rain">
+      <div class="status"><span>18:01</span><span>📶 🔋</span></div>
+      <div class="home-top"><span class="glogo">Go</span><span class="r">Я Пэй ☰</span></div>
+      <div class="home-scroll">
+        <div class="home-addr">📍 Дом ›</div>
+
+        <div class="toggle" style="margin-bottom:14px">
+          <button id="rNow" onclick="setRain('now')">Сейчас</button>
+          <button class="on" id="rNew" onclick="setRain('new')">Стало</button>
+        </div>
+        <div class="toggle" style="margin-bottom:16px;font-size:12px">
+          <button class="on" id="cxRain" onclick="setCtx('rain')">🌧 Дождь</button>
+          <button id="cxJam" onclick="setCtx('jam')">🚦 Пробки</button>
+        </div>
+
+        <div class="ctx-header" id="rainHeader">🌧️ +14°, небольшой дождь</div>
+
+        <div class="res-toast" id="rainToast">✓ Открываем сервис…</div>
+        <div class="cta-chips" id="rainChips">
+          <button class="cchip y" onclick="toast('rainToast','✓ Открываем Такси…')">Вызвать такси</button>
+          <button class="cchip l" onclick="toast('rainToast','✓ Открываем Лавку…')">Заказать в Лавке</button>
+        </div>
+
+        <div class="achips">
+          <div class="achip">🏠 Домой · 35 мин</div><div class="achip">💼 На работу · 50 мин</div>
+        </div>
+        <div class="iconize">
+          <div class="ic"><div class="sq" style="background:#FFE0DA">🛒</div>Маркет</div>
+          <div class="ic"><div class="sq" style="background:#DCE6FF">💙</div>Лавка</div>
+          <div class="ic"><div class="sq" style="background:#FFF0C2">🍔</div>Еда</div>
+          <div class="ic"><div class="sq" style="background:#FFE9B0">🚕</div>Такси</div>
+          <div class="ic"><div class="sq" style="background:#E8F6E2">🛴</div>Самокаты</div>
+          <div class="ic"><div class="sq" style="background:#FFE0DA">📦</div>Доставка</div>
+          <div class="ic"><div class="sq" style="background:#E3F0FF">🚗</div>Драйв</div>
+          <div class="ic"><div class="sq" style="background:#EFE6FF">🎟</div>Афиша</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== SCENARIO: RETURN (win-back) ===================== -->
+    <div class="screen" data-sc="back" id="scr-back">
+      <div class="status"><span>20:19</span><span>📶 🔋</span></div>
+      <div class="home-top"><span class="glogo">Go</span><span class="r">Я Пэй ☰</span></div>
+      <div class="home-scroll">
+        <div class="home-addr">📍 Дом ›</div>
+
+        <div class="toggle" style="margin-bottom:16px">
+          <button id="bNow" onclick="setBack('now')">Сейчас</button>
+          <button class="on" id="bNew" onclick="setBack('new')">Стало</button>
+        </div>
+
+        <div class="ctx-header">С возвращением ✨</div>
+
+        <div id="backNew">
+          <div class="winback" id="winbackCard">
+            <span class="em">🛍️</span>
+            <span class="tx" id="wbText">Мы скучали — −300 ₽ на возвращение в Лавку</span>
+            <button id="wbBtn" onclick="claim()">Забрать промокод</button>
+          </div>
+        </div>
+
+        <div class="achips">
+          <div class="achip">🏠 Домой · 35 мин</div><div class="achip">💼 На работу · 50 мин</div>
+        </div>
+        <div class="iconize">
+          <div class="ic"><div class="sq" style="background:#FFE0DA">🛒</div>Маркет</div>
+          <div class="ic"><div class="sq" style="background:#DCE6FF">💙</div>Лавка</div>
+          <div class="ic"><div class="sq" style="background:#FFF0C2">🍔</div>Еда</div>
+          <div class="ic"><div class="sq" style="background:#FFE9B0">🚕</div>Такси</div>
+          <div class="ic"><div class="sq" style="background:#E8F6E2">🛴</div>Самокаты</div>
+          <div class="ic"><div class="sq" style="background:#FFE0DA">📦</div>Доставка</div>
+          <div class="ic"><div class="sq" style="background:#E3F0FF">🚗</div>Драйв</div>
+          <div class="ic"><div class="sq" style="background:#EFE6FF">🎟</div>Афиша</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="hint">Переключай сценарии сверху. Во флагмане — шаги внизу; в «Дождь» и «Возврат» — тумблер «Сейчас / Стало».</p>
+
+<script>
+  let sc='home', step=0;
+  const homeScreens=['scr-f0','scr-f1','scr-f2','scr-f3'];
+
+  function showOnly(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
+    document.getElementById(id).classList.add('show');
+  }
+  function scenario(s){
+    sc=s;
+    ['home','rain','back'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('on',t===s));
+    document.getElementById('stepper').style.visibility = s==='home'?'visible':'hidden';
+    document.getElementById('back').classList.remove('show');
+    if(s==='home'){ step=0; goHome(0,true); }
+    if(s==='rain'){ showOnly('scr-rain'); }
+    if(s==='back'){ showOnly('scr-back'); }
+  }
+  function goHome(n, silent){
+    step=n; showOnly(homeScreens[n]);
+    for(let i=1;i<=4;i++){document.getElementById('st'+i).classList.toggle('active', i<=n+1);}
+    document.getElementById('back').classList.toggle('show', n>0);
+    if(n===1 && !silent) setMode('new');
+  }
+  function goBack(){ if(sc==='home' && step>0) goHome(step-1); }
+  function setMode(m){
+    document.getElementById('modeNew').style.display = m==='new'?'block':'none';
+    document.getElementById('modeNow').style.display = m==='now'?'block':'none';
+    document.getElementById('tgNew').classList.toggle('on', m==='new');
+    document.getElementById('tgNow').classList.toggle('on', m==='now');
+  }
+  // rain
+  function setRain(m){
+    document.getElementById('rNew').classList.toggle('on',m==='new');
+    document.getElementById('rNow').classList.toggle('on',m==='now');
+    document.getElementById('rainChips').style.display = m==='new'?'flex':'none';
+  }
+  function setCtx(c){
+    document.getElementById('cxRain').classList.toggle('on',c==='rain');
+    document.getElementById('cxJam').classList.toggle('on',c==='jam');
+    const h=document.getElementById('rainHeader'), chips=document.getElementById('rainChips');
+    if(c==='rain'){ h.textContent='🌧️ +14°, небольшой дождь';
+      chips.innerHTML='<button class="cchip y" onclick="toast(\'rainToast\',\'✓ Открываем Такси…\')">Вызвать такси</button><button class="cchip l" onclick="toast(\'rainToast\',\'✓ Открываем Лавку…\')">Заказать в Лавке</button>';
+    } else { h.textContent='🚦 Местами пробки, 4 балла';
+      chips.innerHTML='<button class="cchip g" onclick="toast(\'rainToast\',\'✓ Самокаты рядом…\')">Самокат рядом</button><button class="cchip g" onclick="toast(\'rainToast\',\'✓ Время на транспорте…\')">Время на транспорте</button>';
+    }
+  }
+  function toast(id,txt){const t=document.getElementById(id);t.textContent=txt;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
+  // back
+  function setBack(m){
+    document.getElementById('bNew').classList.toggle('on',m==='new');
+    document.getElementById('bNow').classList.toggle('on',m==='now');
+    document.getElementById('backNew').style.display = m==='new'?'block':'none';
+  }
+  function claim(){
+    document.getElementById('wbText').innerHTML='−300 ₽ применится в Лавке ✓';
+    document.getElementById('wbBtn').style.display='none';
+  }
+  setRain('new');
+</script>
+</body>
+</html>

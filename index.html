@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Яндекс Go · Внутренняя дистрибуция - кейс</title>
+<link rel="icon" href="assets/go-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF; --bg-2:#F7F6F4; --card:#FCFCFB;
+    --ink:#2B2A28; --ink-2:#8A877F; --ink-3:#B7B4AC;
+    --line:#EFEEEA; --line-2:#E4E2DC;
+    --accent:#FFCC00; --dark:#242422;
+    --max:1180px;
+    --disp:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:0}
+  .wrap{max-width:2000px;margin:0 auto;padding:0 clamp(24px,4.5vw,96px)}
+  section{padding:90px 0}
+  ::selection{background:var(--accent);color:#000}
+
+  /* overline label */
+  .ov{display:flex;flex-direction:row;align-items:center;gap:13px;font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);margin-bottom:30px}
+  .ov::before{content:"";width:28px;height:3px;border-radius:2px;background:var(--accent);flex:none}
+
+  .lead{font-family:var(--disp);font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.14;max-width:860px;margin-bottom:24px;color:#33312E}
+  .sub{font-size:18px;color:var(--ink-2);max-width:680px;font-weight:400;line-height:1.65}
+  .hl{color:var(--ink);font-weight:600;box-shadow:inset 0 -9px 0 rgba(255,204,0,.38)}
+  a{color:inherit;text-decoration:none}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.8);backdrop-filter:blur(16px)}
+  nav .wrap{display:flex;align-items:center;height:80px}
+  nav .brand{display:flex;align-items:center;gap:13px;text-decoration:none;color:var(--ink)}
+  nav .brand img.logo{width:36px;height:36px;border-radius:10px;display:block;object-fit:cover}
+  nav .brand i{width:36px;height:36px;border-radius:10px;background:var(--accent);color:#000;display:flex;align-items:center;justify-content:center;font-style:italic;font-weight:700;font-size:17px;letter-spacing:-1px}
+  nav .brand .bl{display:flex;flex-direction:column;line-height:1.18}
+  nav .brand .bl b{font-family:var(--disp);font-size:15.5px;font-weight:400;letter-spacing:-.01em}
+  nav .brand .bl span{font-size:11.5px;color:var(--ink-2);letter-spacing:.12em;text-transform:uppercase}
+
+  /* vertical rotated side nav */
+  .sidenav{position:fixed;top:0;bottom:0;right:10px;width:46px;display:flex;align-items:center;justify-content:center;z-index:60;pointer-events:none}
+  .sidenav ul{list-style:none;display:flex;gap:30px;transform:rotate(90deg);white-space:nowrap;pointer-events:auto}
+  .sidenav a{font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);text-decoration:none;transition:.2s;position:relative;display:inline-block}
+  .sidenav a:hover{color:var(--ink)}
+  .sidenav a.active{color:var(--ink)}
+  .sidenav a::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:.2s}
+  .sidenav a:hover::after,.sidenav a.active::after{transform:scaleX(1)}
+  @media(max-width:1120px){.sidenav{display:none}}
+  @media(min-width:1121px){.wrap{padding-right:clamp(110px,9vw,180px)}}
+
+  /* hero */
+  .hero{padding:190px 0 170px;border-top:0}
+  .hero .ov{margin-bottom:42px}
+  .hero h1{font-family:var(--disp);font-size:clamp(30px,3.4vw,50px);font-weight:600;letter-spacing:-.02em;line-height:1.16;margin-bottom:40px;max-width:920px;color:#33312E}
+  .hero h1 .u{position:relative;white-space:nowrap}
+  .hero h1 .u::after{content:"";position:absolute;left:0;right:0;bottom:.06em;height:7px;background:var(--accent);opacity:.9;z-index:-1}
+  .hero p{font-size:20px;color:var(--ink-2);max-width:640px;margin-bottom:64px;font-weight:400;line-height:1.6}
+  .hero .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:2px;overflow:hidden}
+  .hero .meta div{background:var(--bg);padding:22px 24px}
+  .hero .meta b{display:block;font-size:11px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.15em;margin-bottom:9px}
+  .hero .meta span{font-family:var(--disp);font-size:17px;font-weight:500;letter-spacing:-.02em}
+  @media(max-width:720px){.hero .meta{grid-template-columns:1fr}}
+
+  /* approach */
+  #approach{border-top:0}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:42px;border-radius:2px;overflow:hidden}
+  @media(max-width:780px){.grid3{grid-template-columns:1fr}}
+  .acard{background:var(--bg);padding:30px 28px}
+  .acard .n{font-family:var(--body);font-size:11px;font-weight:600;color:var(--ink-3);margin-bottom:16px;text-transform:uppercase;letter-spacing:.15em}
+  .acard h3{font-family:var(--disp);font-size:20px;font-weight:600;margin-bottom:10px;letter-spacing:-.02em}
+  .acard p{font-size:15px;color:var(--ink-2)}
+  .acard b{color:var(--ink);font-weight:600}
+
+  .northstar{margin-top:40px;background:var(--dark);color:#EDEAE2;border-radius:3px;padding:42px 44px}
+  .northstar .k{font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+  .northstar p{font-family:var(--disp);font-size:23px;line-height:1.4;font-weight:400;letter-spacing:-.02em}
+  .northstar b{color:#fff;font-weight:500;box-shadow:inset 0 -8px 0 rgba(232,196,0,.3)}
+
+  /* cases */
+  .case{padding:84px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:118px 424px 1fr;gap:28px;align-items:start}
+  .case:first-of-type{border-top:0;padding-top:40px}
+  @media(max-width:1000px){.case{grid-template-columns:1fr;gap:22px}}
+  .case .big{font-family:var(--disp);font-size:76px;font-weight:500;color:#D9D6CE;letter-spacing:-.05em;line-height:.85}
+  .idx{position:sticky;top:108px;align-self:start;display:flex;flex-direction:column;align-items:flex-start;gap:18px}
+  @media(max-width:1000px){.idx{position:static;flex-direction:row;align-items:center;gap:16px}}
+  .case > div:last-child{max-width:880px;margin-left:32px}
+  @media(max-width:1000px){.case .big{font-size:64px}}
+  .shots{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none}
+  .shots::-webkit-scrollbar{display:none}
+  .shots img{height:440px;border-radius:32px;border:1px solid var(--line-2);cursor:zoom-in;flex:none;background:var(--bg-2);scroll-snap-align:start}
+  @media(max-width:1000px){.shots img{height:340px}}
+  /* gallery switcher */
+  .gallery{position:relative}
+  .gal-ctrls{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:18px}
+  .gal-arrow{width:40px;height:40px;border-radius:50%;border:1px solid var(--line-2);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;color:var(--ink);transition:.15s;padding-bottom:3px}
+  .gal-arrow:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .gal-arrow:disabled{opacity:.28;cursor:default;background:#fff;color:var(--ink);border-color:var(--line-2)}
+  .gal-dots{display:flex;align-items:center;gap:8px}
+  .gal-dot{width:8px;height:8px;border-radius:50%;background:var(--line-2);cursor:pointer;transition:.2s}
+  .gal-dot.active{background:var(--accent);width:24px;border-radius:4px}
+  /* annotations over screenshots */
+  .shot{position:relative;flex:none;line-height:0;scroll-snap-align:start}
+  .shot .mark{position:absolute;border:3px solid var(--accent);border-radius:12px;pointer-events:none;box-shadow:0 2px 14px rgba(0,0,0,.14);z-index:2}
+  .shot .mark.ring{border-radius:50%}
+  .shot .tag{position:absolute;transform:translateY(-115%);background:var(--ink);color:#fff;font-family:var(--body);font-size:12px;font-weight:600;line-height:1.2;padding:6px 10px;border-radius:9px;white-space:nowrap;z-index:3;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  .case .label{display:inline-block;font-family:var(--body);font-size:11px;font-weight:600;color:var(--ink-2);letter-spacing:.14em;text-transform:uppercase;background:rgba(43,42,40,.06);padding:7px 13px;border-radius:999px}
+  .case h3{font-family:var(--disp);font-size:27px;font-weight:500;letter-spacing:-.025em;line-height:1.12;margin:0 0 16px}
+  .casetype{display:flex;align-items:center;gap:9px;font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+  .casetype .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .casetype.a .dot{background:var(--accent)}
+  .casetype.b .dot{background:#6E8BE0}
+  .case .ctx{font-size:16px;color:var(--ink-2);margin:0 0 28px;line-height:1.6}
+  .beats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+  @media(max-width:700px){.beats{grid-template-columns:1fr}}
+  .beat{background:var(--bg-2);border-radius:16px;padding:18px 20px}
+  .beat .h{font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+  .beat p{font-size:15.5px}
+  .gist{margin-top:20px;font-family:var(--disp);font-size:17px;font-weight:400;letter-spacing:-.015em;padding-left:18px;border-left:2px solid var(--accent);line-height:1.4}
+
+  /* prioritization */
+  .princ{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:32px 0;border-radius:2px;overflow:hidden}
+  @media(max-width:680px){.princ{grid-template-columns:1fr}}
+  .princ .p{background:var(--bg);padding:22px 24px}
+  .princ .p b{font-family:var(--disp);display:block;font-size:16px;font-weight:600;margin-bottom:6px;letter-spacing:-.02em}
+  .princ .p span{font-size:14.5px;color:var(--ink-2)}
+  .ricegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:0 0 2px 2px;overflow:hidden;margin:0}
+  @media(max-width:780px){.ricegrid{grid-template-columns:repeat(2,1fr)}}
+  .rcard{background:var(--bg);padding:26px 24px}
+  .rcard .rl{font-family:var(--disp);font-size:34px;font-weight:600;color:#DFDCD3;letter-spacing:-.03em;display:block;line-height:1;margin-bottom:16px}
+  .rcard b{font-family:var(--disp);font-size:17px;font-weight:600;letter-spacing:-.02em;display:block;margin-bottom:7px}
+  .rcard p{font-size:14px;color:var(--ink-2);line-height:1.5}
+  .formula-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--bg-2);border:1px solid var(--line);border-bottom:none;color:var(--ink);border-radius:2px 2px 0 0;margin-top:24px;padding:18px 26px;font-family:var(--disp);font-size:18px;font-weight:500;letter-spacing:-.01em}
+  .formula-bar .fl{font-family:var(--body);font-size:12px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.14em}
+  .formula-bar .fx{border-left:1px solid var(--line-2);padding-left:18px}
+  .formula-bar em{font-style:normal;color:var(--ink-2)}
+  .formula-bar .fs{font-family:var(--body);font-size:12px;font-weight:500;color:var(--ink-3);text-transform:uppercase;letter-spacing:.12em;margin-left:auto}
+  .verdict{margin-top:32px;background:rgba(74,157,94,.07);border:1px solid rgba(74,157,94,.26);border-left:3px solid #4A9D5E;border-radius:2px;padding:28px 32px}
+  .verdict .k{display:block;font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#2F7D45;margin-bottom:12px}
+  .verdict h4{font-family:var(--disp);font-size:23px;font-weight:600;letter-spacing:-.02em;margin-bottom:16px;line-height:1.15}
+  .verdict ul{list-style:none;display:flex;flex-direction:column;gap:11px;max-width:880px}
+  .verdict li{font-size:15.5px;color:var(--ink-2);line-height:1.55;padding-left:20px;position:relative}
+  .verdict li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:#4A9D5E}
+  .verdict li b{color:var(--ink);font-weight:600}
+  table{width:100%;border-collapse:collapse;margin:26px 0;font-size:15px}
+  th,td{padding:14px 12px;text-align:center;border-bottom:1px solid var(--line)}
+  th{font-family:var(--body);font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:600}
+  td{font-family:var(--disp);font-weight:400;letter-spacing:-.01em}
+  td:nth-child(2){text-align:left;font-family:var(--body);font-weight:500}
+  tr.pick{background:rgba(74,157,94,.10)}
+  tr.pick td:first-child{box-shadow:inset 3px 0 0 #4A9D5E}
+  tr.pick .score{color:#2F7D45}
+  .score{font-weight:600;color:var(--ink)}
+  .pill{display:inline-block;font-family:var(--body);font-size:11px;font-weight:600;padding:4px 9px;border-radius:3px;letter-spacing:.03em}
+  .pill.bet{background:var(--dark);color:var(--accent)}
+  .pill.hyg{background:var(--bg-2);color:var(--ink-2);border:1px solid var(--line-2)}
+  .pill.big{background:#E7E9F5;color:#3a4480}
+  .themes{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px;border-radius:2px;overflow:hidden}
+  @media(max-width:780px){.themes{grid-template-columns:1fr}}
+  .theme{padding:28px 26px;background:var(--bg)}
+  .theme.win{background:var(--dark);color:#EDEAE2}
+  .theme h4{font-family:var(--disp);font-size:18px;font-weight:600;margin-bottom:8px;letter-spacing:-.02em}
+  .theme p{font-size:14.5px;color:var(--ink-2)}
+  .theme.win p{color:#B8B4AA}
+  .theme .tag{font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;display:block;margin-bottom:10px}
+  .theme.win .tag{color:var(--accent)}
+
+  /* idea */
+  .ideabox{background:var(--card);border:1px solid var(--line-2);border-radius:4px;padding:46px;margin-top:10px;position:relative;overflow:hidden}
+  .ideabox::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+  .ideabox .k{font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px;color:var(--ink-2)}
+  .ideabox h3{font-family:var(--disp);font-size:34px;font-weight:500;letter-spacing:-.03em;line-height:1.08;margin-bottom:18px}
+  .ideabox p{font-size:18px;max-width:760px;color:var(--ink-2)}
+  .ideabox p b{color:var(--ink);font-weight:600}
+  .ideabox .flag{margin-top:24px;display:inline-flex;align-items:center;gap:10px;background:var(--dark);color:#EDEAE2;font-family:var(--disp);font-size:15px;font-weight:500;padding:13px 20px;border-radius:3px;letter-spacing:-.01em}
+  .ideabox .flag b{color:var(--accent);font-weight:600}
+  .casetag{display:inline-block;vertical-align:middle;font-family:var(--body);font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--ink-2);background:var(--bg-2);border:1px solid var(--line-2);padding:5px 12px;border-radius:999px;margin-left:12px;text-transform:none}
+  .ctxblock{border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-top:26px}
+  .ctxblock .r3{display:grid;grid-template-columns:repeat(3,1fr)}
+  @media(max-width:780px){.ctxblock .r3{grid-template-columns:1fr}}
+  .ctxblock .cxc{padding:28px 28px}
+  .ctxblock .r3 .cxc:not(:first-child){border-left:1px solid var(--line)}
+  @media(max-width:780px){.ctxblock .r3 .cxc:not(:first-child){border-left:none}}
+  .ctxblock .cxl{display:block;font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
+  .ctxblock .cxc p{font-size:15.5px;color:var(--ink-2);line-height:1.55}
+  .ctxblock .cxc p b{color:var(--ink);font-weight:600}
+  .ctxblock .now{padding:22px 28px;background:var(--bg-2);border-bottom:1px solid var(--line);font-size:15px;color:var(--ink-2);line-height:1.55}
+  .ctxblock .now b{color:var(--ink);font-weight:600}
+  .ctxblock .ins{padding:30px 28px;background:rgba(255,204,0,.09)}
+  .ctxblock .ins .k{display:block;font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A7B00;margin-bottom:12px}
+  .ctxblock .ins p{font-family:var(--disp);font-size:20px;line-height:1.45;font-weight:400;letter-spacing:-.02em;color:var(--ink)}
+  .ctxblock .ins p b{font-weight:600;box-shadow:inset 0 -7px 0 rgba(255,204,0,.5)}
+
+  /* prototype */
+  .protowrap{display:grid;grid-template-columns:380px 1fr;gap:48px;align-items:start;margin-top:30px}
+  @media(max-width:860px){.protowrap{grid-template-columns:1fr}}
+  .frame{border:1px solid var(--line-2);border-radius:8px;overflow:hidden;background:var(--bg-2);height:770px}
+  .frame iframe{width:100%;height:100%;border:0;display:block}
+  .protonote h4{font-family:var(--disp);font-size:20px;font-weight:600;margin:26px 0 10px;letter-spacing:-.02em}
+  .protonote h4:first-child{margin-top:0}
+  .protonote ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+  .protonote li{font-size:15.5px;padding-left:18px;position:relative;color:var(--ink-2)}
+  .protonote li::before{content:"";position:absolute;left:0;top:10px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  .protonote li b{color:var(--ink);font-weight:600}
+  .openbtn{display:inline-block;margin-top:22px;border:1px solid var(--ink);color:var(--ink);font-family:var(--disp);font-weight:500;font-size:14px;padding:12px 22px;border-radius:3px;transition:.15s}
+  .openbtn:hover{background:var(--ink);color:var(--bg)}
+  .ideashots{display:flex;flex-wrap:wrap;justify-content:center;gap:30px;margin-top:30px}
+  .ideashots figure{margin:0;width:270px;max-width:100%}
+  .ideashots img{width:100%;display:block;border-radius:22px;border:1px solid var(--line-2);background:var(--bg-2)}
+  .ideashots figcaption{margin-bottom:14px;font-size:14px;color:var(--ink-2);line-height:1.5}
+  .ideashots .st{display:block;font-family:var(--disp);font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.01em;margin-bottom:5px}
+  .protonote2{margin-top:46px;display:grid;grid-template-columns:1fr 1fr;gap:48px}
+  @media(max-width:780px){.protonote2{grid-template-columns:1fr;gap:0}}
+  .mechgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:2px;overflow:hidden;margin-top:24px}
+  @media(max-width:780px){.mechgrid{grid-template-columns:1fr}}
+  .mcard{background:var(--bg);padding:28px 28px}
+  .mcard .ml{display:block;font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
+  .mcard p{font-size:15.5px;color:var(--ink-2);line-height:1.55}
+  .mcard p b{color:var(--ink);font-weight:600}
+  .mcard.wide{grid-column:1 / -1}
+  .oneengine{margin-top:18px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:2px;background:var(--bg-2);padding:26px 30px}
+  .oneengine .ml{display:block;font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+  .oneengine p{font-size:16px;color:var(--ink-2);line-height:1.6;max-width:900px}
+  .oneengine p b{color:var(--ink);font-weight:600}
+
+  /* metrics */
+  .mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:12px;border-radius:2px;overflow:hidden}
+  @media(max-width:780px){.mcards{grid-template-columns:1fr}}
+  .mc{background:var(--bg);padding:28px 26px}
+  .mc .n{font-family:var(--disp);font-size:30px;font-weight:400;color:var(--ink-3);margin-bottom:14px;letter-spacing:-.03em}
+  .mc h4{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:8px;letter-spacing:-.02em}
+  .mc p{font-size:14.5px;color:var(--ink-2)}
+  .risk{margin-top:24px;border:1px solid var(--line-2);background:var(--card);border-radius:4px;padding:26px 28px;position:relative;overflow:hidden}
+  .risk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+  .risk b{font-weight:600}
+
+  /* cut list */
+  .cutlist{display:flex;flex-direction:column;border-top:1px solid var(--line);margin-top:18px}
+  .cutrow{display:grid;grid-template-columns:30px 1fr;gap:20px;padding:24px 0;border-bottom:1px solid var(--line);align-items:start}
+  .cutrow .x{font-family:var(--disp);color:var(--ink-3);font-size:19px;line-height:1.4}
+  .cutrow .c b{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:-.02em;display:block;margin-bottom:6px;line-height:1.2}
+  .cutrow .c p{font-size:15.5px;color:var(--ink-2)}
+  @media(max-width:600px){.cutrow{grid-template-columns:1fr;gap:7px}}
+
+  footer{padding:70px 0;color:var(--ink-3);font-size:14px;text-align:center;font-family:var(--disp);font-weight:400;letter-spacing:-.01em}
+
+  /* lightbox */
+  .lb{position:fixed;inset:0;background:rgba(20,19,17,.9);display:none;align-items:center;justify-content:center;z-index:100;padding:34px;cursor:zoom-out}
+  .lb.show{display:flex}
+  .lb img{max-width:100%;max-height:100%;border-radius:6px}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="#top">
+    <img class="logo" src="assets/go-logo.png" alt="Go" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'Go'}))">
+    <span class="bl"><b>Case study</b><span>Яндекс Go</span></span>
+  </a>
+</div></nav>
+
+<aside class="sidenav">
+  <ul>
+    <li><a href="#approach">Контекст</a></li>
+    <li><a href="#audit">Аудит</a></li>
+    <li><a href="#prio">Приоритизация</a></li>
+    <li><a href="#proto">Прототип</a></li>
+    <li><a href="#cut">Стоп-лист</a></li>
+    <li><a href="#metrics">Метрики</a></li>
+  </ul>
+</aside>
+
+<!-- HERO -->
+<header class="hero" id="top"><div class="wrap">
+  <h1>Привет! Я Маша, продакт-менеджер. Это моё <span class="u">дискавери</span>  Яндекс&nbsp;Go: аудит текущих экранов и несколько мыслей, что можно улучшить</h1>
+  <div class="meta">
+    <div><b>Метод и способ ресёрча</b><span>Скриншотила, как не в себя</span></div>
+    <div><b>Что нашла</b><span>10 любопытных сценариев </span></div>
+    <div><b>На что ориентировалась</b><span>На то, как растить % пользователей с 2+ сервисами</span></div>
+  </div>
+</div></header>
+
+<!-- APPROACH -->
+<section id="approach"><div class="wrap">
+  <div class="ov">Контекст</div>
+  <div class="lead">Тестовое: продакт внутренней дистрибуции Яндекс Go</div>
+
+  <div class="grid3">
+    <div class="acard"><div class="n">Домен</div><h3>Две дистрибуции</h3><p><b>Сервисов</b> - как Такси, Лавка, Еда, Маркет, Самокаты приводят новичков, раздают промокоды и реактивируют ушедших через поверхности самого Go.<br><br><b>Ценности супераппа</b> - онбординг новичка: где и в какой момент рассказать о возможности, чтобы он её распробовал.</p></div>
+    <div class="acard"><div class="n">Часть 1</div><h3>Аудит</h3><p>Найти места, где дистрибуция или онбординг работают плохо или отсутствуют: скриншот → что произошло / чего не произошло → почему это упущенная возможность. Это про вкус, а не про поиск багов.</p></div>
+    <div class="acard"><div class="n">Часть 2</div><h3>Решение</h3><p>Одна проблема вглубь: контекст и инсайт → прототип (1–3 экрана) → механика дистрибуции (кому показываем, сигналы, частота) → что НЕ делаем → метрики и риск.</p></div>
+  </div>
+</div></section>
+
+<!-- AUDIT -->
+<section id="audit"><div class="wrap">
+  <div class="ov">Часть 1 - Аудит</div>
+  <div class="lead">10 точек роста в дистрибуции и онбординге: хедер, главная, промо сервисов</div>
+
+  <!-- C1 -->
+  <div class="case">
+    <div class="idx"><div class="big">01</div><span class="label">Главная - меню</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c1-1.jpg" alt=""><span class="mark ring" style="top:39.5%;left:3.5%;width:19%;height:8.6%"></span></div>
+      <div class="shot"><img src="assets/c1-2.jpg" alt=""><span class="mark ring" style="top:39.5%;left:3.5%;width:19%;height:8.6%"></span></div>
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>Порядок иконок плавает, но надо ли в этом сценарии?</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Захожу с привычкой Маркет - первая иконка, но ее нет на привычном месте, ищу где она.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Нет закреплённых иконок и визуального якоря - система меняет раскладку молча, без возможности вернуть привычный порядок.</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Ломается сценарий "повторный заход". Растёт когнитивная нагрузка на входе, риск промаха и оттока, падает доверие к "умным" подсказкам.</p></div>
+      </div>
+      <div class="gist">Персонализация оптимизирует отдельный заход, но разрушает привычку</div>
+    </div>
+  </div>
+
+  <!-- C2 -->
+  <div class="case">
+    <div class="idx"><div class="big">02</div><span class="label">Главная - меню</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c2-1.jpg" alt="">
+        <span class="mark" style="top:40.3%;left:3.5%;width:92%;height:20.5%"></span>
+      </div>
+      <div class="shot"><img src="assets/c2-2.jpg" alt="">
+        <span class="mark" style="top:40.3%;left:3.5%;width:92%;height:20.5%"></span>
+      </div>
+      <div class="shot"><img src="assets/c2-3.jpg" alt="">
+        <span class="mark" style="top:40.3%;left:3.5%;width:92%;height:10.7%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype b"><span class="dot"></span>Дистрибуция ценности супераппа</div>
+      <h3>20 иконок на главной, 8 вижу, до остальных дойду?
+      </h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Зашла на главную, пролистнула сервисы. Не различаю когда выбрать Еду, когда Лавку, когда Магазины. Когда Прокат а когда Драйв?</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Никто не объясняет разницу, нет навигации по задаче ("поесть" / "доехать" / "отправить").</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Новичок оседает на знакомом и скорее всего не скроллит, слишком много выбора.</p></div>
+      </div>
+      <div class="gist">Навигация устроена по брендам сервисов, а человек мыслит задачами - возможно есть сложности с дистрибуцией с главной по новым сервисам и приходится их ставить на 1 места иногда.</div>
+    </div>
+  </div>
+
+  <!-- C3 -->
+  <div class="case">
+    <div class="idx"><div class="big">03</div><span class="label">Главная - чипсы</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c3-1.jpg" alt="">
+        <span class="mark" style="top:25.8%;left:6.5%;width:90%;height:12.6%"></span>
+      </div>
+      <div class="shot"><img src="assets/c3-2.jpg" alt="">
+        <span class="mark" style="top:25.8%;left:1.5%;width:59%;height:12.6%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>70% моих поездок это новые адреса, но я не понимаю как 1 кнопкой перейти к новому адресу</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Хочу такси на новый адрес - но быстрый доступ собран только под регулярные точки. Нужный сценарий длиннее повторного.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Нет простого входа "Вызвать такси → куда едем?" под произвольный адрес - он спрятан в перегруженное поле "адрес или еда".</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Самый монетизируемый сценарий, но найти его сложнее; перегруженный вход размывает интент</p></div>
+      </div>
+      <div class="gist">Быстрый доступ построен вокруг 4 предсказанных адресов - поэтому поездка на новый адрес оказывается самой неудобной.</div>
+    </div>
+  </div>
+
+  <!-- C4 -->
+  <div class="case">
+    <div class="idx"><div class="big">04</div><span class="label">Хедер</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c3-1.jpg" alt="">
+        <span class="mark" style="top:15.8%;left:5.5%;width:67%;height:8.6%"></span>
+      </div>
+      <div class="shot"><img src="assets/c4-6.jpg" alt="">
+        <span class="mark" style="top:24.5%;left:5%;width:73%;height:13.5%"></span>
+      </div>
+      <div class="shot"><img src="assets/c4-7.jpg" alt="">
+        <span class="mark" style="top:24.5%;left:5%;width:58%;height:13.5%"></span>
+      </div>
+      <div class="shot"><img src="assets/c4-8.jpg" alt="">
+        <span class="mark" style="top:24.5%;left:5%;width:67%;height:13.5%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype b"><span class="dot"></span>Дистрибуция ценности супераппа</div>
+      <h3>Онбординг в сервисы живёт в хедере, но не для возвращенцев после удаления аппа</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Удалила приложение и снова вошла - встретило "С возвращением", и больше ничего. У новичка хедер активно знакомит с сервисами.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Вернувшемуся не дали онбординг в сервисы в самом заметном месте экрана.</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Теряем возможность познакомить с сервисами возвращенцев </p></div>
+      </div>
+      <div class="gist">Онбординг в хедере показывают только новичкам - вернувшийся получает декоративное приветствие вместо знакомства с тем, что Go умеет.</div>
+    </div>
+  </div>
+
+  <!-- C5 -->
+  <div class="case">
+    <div class="idx"><div class="big">05</div><span class="label">Онбординг</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c5-4.png" alt="">
+        <span class="mark" style="top:54.2%;left:74.4%;width:20.4%;height:9.8%"></span>
+        <span class="mark" style="top:64.7%;left:4.9%;width:20.4%;height:9.8%"></span>
+      </div>
+      <img src="assets/c5-8.png" alt=""><img src="assets/c5-9.png" alt="">
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>Бонус новичку показывают уже внутри сервиса</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Перешла в сервис сама - и только там встретил бонус. Деньги дали уже после того, как я приняла решение зайти.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Оффер не показали до входа - на поверхности, которая отвечает за дистрибуцию.</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Нулевая инкрементальность - платим тем, кто пришёл бы и так. Не дотягиваемся до колеблющихся. Бюджет работает как "спасибо за визит", а не рычаг.</p></div>
+      </div>
+      <div class="gist">Деньги награждают уже случившийся переход вместо того, чтобы его создавать - оффер нужно поднять на поверхность до входа.</div>
+    </div>
+  </div>
+
+  <!-- C6 -->
+  <div class="case">
+    <div class="idx"><div class="big">06</div><span class="label">Онбординг</span></div>
+    <div class="shots"><img src="assets/c6-1.png" alt=""><img src="assets/c6-2.png" alt=""><img src="assets/c6-4.png" alt=""><img src="assets/c6-5.png" alt=""><img src="assets/c6-6.png" alt=""><img src="assets/c6-8.png" alt=""></div>
+    <div>
+      <div class="casetype b"><span class="dot"></span>Дистрибуция ценности супераппа</div>
+      <h3>Онбординг-бонусы разрозненны, без общего флоу</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Захожу в сервисы по отдельности, каждый раз - локальная плюшка в своём дизайне. Между ними нет связи.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Меня не провели единым онбординг-флоу с общим стимулом и прогрессом.</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Бонусы не складываются в воронку и не тянут в следующий сервис; нет общего "вау"-якоря; бюджетом нельзя управлять как рычагом.</p></div>
+      </div>
+      <div class="gist">Бонусы есть, но как набор разрозненных акций - активируют точечно и не двигают кросс-сервис.</div>
+    </div>
+  </div>
+
+  <!-- C7 -->
+  <div class="case">
+    <div class="idx"><div class="big">07</div><span class="label">Хедер</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c7-1.png" alt="">
+        <span class="mark" style="top:16.3%;left:1.5%;width:81.6%;height:12.2%"></span>
+      </div>
+      <div class="shot"><img src="assets/c7-3.png" alt="">
+        <span class="mark" style="top:16.3%;left:1.5%;width:78%;height:12.2%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>Контекстные хедеры ловят момент, но не дожимают до действия</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Открыла в дождь - хедер сообщил погоду. А я хочу быстро вызвать такси или заказать в Лавке, чтобы не выходить.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Нет контекстной кнопки: дождь → такси / Лавка; пробки → самокат / транспорт.</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Хедер сидит на пересечении контекста и интента и не дожимает. Это самая дешёвая точная дистрибуция, а поверхность уже есть.</p></div>
+      </div>
+      <div class="gist">Хедеры констатируют факт - не хватает одной кнопки, которая превращает "сейчас дождь" в "вызвать такси".</div>
+    </div>
+  </div>
+
+  <!-- C8 -->
+  <div class="case">
+    <div class="idx"><div class="big">08</div><span class="label">Чипсы</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c8-1.png" alt="">
+        <span class="mark" style="top:31%;left:6.5%;width:91%;height:12%"></span>
+      </div>
+      <div class="shot"><img src="assets/c8-2.png" alt="">
+        <span class="mark" style="top:31%;left:6.5%;width:91%;height:12%"></span>
+      </div>
+      <div class="shot"><img src="assets/c8-3.png" alt="">
+        <span class="mark" style="top:31%;left:6.5%;width:91%;height:12%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>Чипсы предсказывают только адреса и только под такси</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Заказываю такси с работы - система это знает. Но в ответ список адресов, всегда на такси, хотя я на каршере ездила.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Нет того же адреса разными способами (такси / Драйв / самокат) и попутных сервисов ("закажи Лавку, пока едешь").</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Чипсы одномерны. При предсказуемой поездке 4 адреса избыточны, заполняем место избыточным сценарием </p></div>
+      </div>
+      <div class="gist">Чипсы повторяют адреса под единственный сценарий "такси" - хотя могли бы стать выбором "как доехать + что захватить по пути".</div>
+    </div>
+  </div>
+
+  <!-- C9 -->
+  <div class="case">
+    <div class="idx"><div class="big">09</div><span class="label">Хедер</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c9-1.png" alt="">
+        <span class="mark" style="top:16.6%;left:4%;width:82%;height:7.6%"></span>
+      </div>
+      <div class="shot"><img src="assets/c9-2.png" alt="">
+        <span class="mark" style="top:16.6%;left:4%;width:91%;height:8.2%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>Реактивационный хедер срабатывает - а оффера в нём нет</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Вернулась после перерыва, приложение распознало и поздоровалось. Стимула остаться или сделать заказ - нет.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Нет "мы скучали - вот промокод на возвращение", нет скидки на сервис, которым я пользовалась.</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Возврат ушедшего - дорогое событие. Триггер уже готов, надо вовлечь в сервис как можно быстрее</p></div>
+      </div>
+      <div class="gist">Хедер ловит момент возврата, но ограничивается приветствием - без оффера, который превратил бы "здравствуйте" в заказ.</div>
+    </div>
+  </div>
+
+  <!-- C10 -->
+  <div class="case">
+    <div class="idx"><div class="big">10</div><span class="label">Поездка</span></div>
+    <div class="shots">
+      <div class="shot"><img src="assets/c10-2.png" alt="">
+        <span class="mark" style="top:66.8%;left:2%;width:96%;height:30.5%"></span>
+      </div>
+      <div class="shot"><img src="assets/c10-4.png" alt="">
+        <span class="mark" style="top:59.6%;left:2%;width:96%;height:37.7%"></span>
+      </div>
+      <div class="shot"><img src="assets/c10-5.png" alt="">
+        <span class="mark" style="top:59.9%;left:2%;width:96%;height:37.4%"></span>
+      </div>
+      <div class="shot"><img src="assets/c10-11.png" alt="">
+        <span class="mark" style="top:57.0%;left:2%;width:96%;height:40.3%"></span>
+      </div>
+      <div class="shot"><img src="assets/c10-6.png" alt="">
+        <span class="mark" style="top:59.6%;left:2%;width:96%;height:37.7%"></span>
+      </div>
+    </div>
+    <div>
+      <div class="casetype a"><span class="dot"></span>Дистрибуция сервисов</div>
+      <h3>В поездке домой реки товарные (Маркет), а не под интент "еду домой"</h3>
+      <div class="beats">
+        <div class="beat"><div class="h">Что произошло</div><p>Еду домой, в такси думаю, что хочу купить поесть, прошу водителя высадить у магазина.</p></div>
+        <div class="beat"><div class="h">Чего не произошло</div><p>Реки не подстроились под "еду домой": не подмешали Лавку и Еду, не предложили "продукты к приезду".</p></div>
+        <div class="beat"><div class="h">Почему упущенная возможность</div><p>Интент назначения - готовый таргетинг (дом → еда; аэропорт → отели; ТЦ → Маркет). Это пик намерения для попутной доставки и кросс-сервис в одной сессии.</p></div>
+      </div>
+      <div class="gist">Go показывает товарку вместо продуктов под очевидный интент назначения.</div>
+    </div>
+  </div>
+
+</div></section>
+
+<!-- PRIORITIZATION -->
+<section id="prio"><div class="wrap">
+  <div class="ov">Приоритизация</div>
+  <div class="lead">Группирую по RICE</div>
+  <p class="sub"><span class="hl">North Star Metric - доля пользователей с 2+ сервисами.</span> Чтобы моно-пользователь взял второй сервис, он проходит цепочку: <b>найти сервис → получить повод в нужный момент → не передумать</b></p>
+
+  <div class="formula-bar"><span class="fl">Оценка · RICE</span><span class="fx">Балл = Охват × Эффект × Уверенность <em>÷</em> Затраты</span><span class="fs">шкалы 1-5</span></div>
+  <div class="ricegrid">
+    <div class="rcard"><span class="rl">R</span><b>Охват</b><p>сколько пользователей в моменте</p></div>
+    <div class="rcard"><span class="rl">I</span><b>Эффект</b><p>вклад в долю 2+ сервисов</p></div>
+    <div class="rcard"><span class="rl">C</span><b>Уверенность</b><p>насколько подтверждено данными или сигналом в проде (субъективно для демо)</p></div>
+    <div class="rcard"><span class="rl">E</span><b>Затраты</b><p>стоимость внедрения</p></div>
+  </div>
+
+  <table>
+    <thead><tr><th>#</th><th>Кейс</th><th>Охв</th><th>Эфф</th><th>Увер</th><th>Затр</th><th>Балл</th></tr></thead>
+    <tbody>
+      <tr class="pick"><td>10</td><td>Рекомендации в поездке не по интенту <b></b></td><td>4</td><td>5</td><td>5</td><td>2</td><td class="score">50</td></tr>
+      <tr><td>7</td><td>Контекстный хедер без действия</td><td>5</td><td>4</td><td>4</td><td>2</td><td class="score">40</td></tr>
+      <tr><td>1</td><td>Порядок иконок нестабилен</td><td>5</td><td>2</td><td>5</td><td>2</td><td class="score">25</td></tr>
+      <tr><td>9</td><td>Хедер возврата без оффера</td><td>3</td><td>4</td><td>4</td><td>2</td><td class="score">24</td></tr>
+      <tr><td>5</td><td>Бонус виден только после входа</td><td>4</td><td>4</td><td>4</td><td>3</td><td class="score">21</td></tr>
+      <tr><td>8</td><td>Чипы - только адреса и такси</td><td>4</td><td>4</td><td>3</td><td>3</td><td class="score">16</td></tr>
+      <tr><td>2</td><td>Таксономия по бренду, а не задаче</td><td>5</td><td>4</td><td>3</td><td>5</td><td class="score">12</td></tr>
+      <tr><td>4</td><td>Контекстный хедер - только новичкам</td><td>3</td><td>4</td><td>3</td><td>3</td><td class="score">12</td></tr>
+      <tr><td>6</td><td>Онбординг-бонус раздроблен</td><td>4</td><td>5</td><td>3</td><td>5</td><td class="score">12</td></tr>
+      <tr><td>3</td><td>Заказ на новый адрес неудобен</td><td>3</td><td>2</td><td>3</td><td>3</td><td class="score">6</td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict">
+    <span class="k">Вывод</span>
+    <h4>Выбираю кейс 10. Интент - рекомендации в поездке</h4>
+    <p style="font-size:15.5px;color:var(--ink-2);margin-bottom:16px;max-width:880px">Максимальный балл (50). Разложу по составляющим RICE - что именно его вытягивает:</p>
+    <ul>
+      <li><b>Эффект (5).</b> Сильнейший по кросс-сервису: такси и Лавка/Еда соединяются в один результат одной поездки - приезжают вместе, списываются со счета тоже вместе</li>
+      <li><b>Уверенность (5).</b> Поведение уже существует офлайн (заезд за продуктами по пути), остановка у магазина.</li>
+      <li><b>Затраты (2).</b> Рекомендации под карточкой водителя уже в проде</li>
+      <li><b>Охват (4).</b> Поездки домой - крупный регулярный сегмент, но это не всевозможные поездки, поэтому не максимум.</li>
+    </ul>
+  </div>
+</div></section>
+
+<!-- PROTOTYPE -->
+<section id="proto"><div class="wrap">
+  <div class="ov">Прототип</div>
+  <div class="lead">Лавка в слоте рекомендаций на экране поездки</div>
+  <div class="ctxblock">
+    <div class="r3">
+      <div class="cxc"><span class="cxl">В какой момент</span><p>Пользователь заказал такси домой и едет ~25 минут. Экран поездки открыт, иногда поглядывает сколько осталось, паралельно слушает музыку или переписывается в мессенджере в телефоне.</p></div>
+      <div class="cxc"><span class="cxl">Что в голове</span><p>"Скоро дома - надо что-то к ужину". На практике человек либо просит водителя остановить возле магазина, либо открывает другой сервис доставки, чтобы продукты приехали ближе к дому.</p></div>
+      <div class="cxc"><span class="cxl">Почему механика живёт здесь</span><p>Запертые ~25 минут с готовым интентом "домой". Go уже знает три вещи: <b>куда</b> едешь (дом), <b>когда</b> приедешь, <b>что</b> обычно покупаешь (последний заказ Лавки).</p></div>
+    </div>
+  </div>
+
+  <div class="ideashots">
+    <figure><figcaption><span class="st">Новичок · истории нет</span>Лента «к приезду» под ужин. Знакомим с Лавкой через попутный заказ, а не товарной рекой мимо интента.</figcaption><img src="assets/idea-1.png" alt=""></figure>
+    <figure><figcaption><span class="st">Добавил в корзину</span>Появляется панель «к оплате · 5–10 мин» со степпером - собираешь, не уходя с экрана поездки.</figcaption><img src="assets/idea-2.png" alt=""></figure>
+    <figure><figcaption><span class="st">Постоянный · есть история</span>«Уже брали из Лавки - повторить?» Привычный заказ в один тап.</figcaption><img src="assets/idea-3.png" alt=""></figure>
+  </div>
+
+  <div class="lead" style="font-size:22px;margin-top:64px">Механика дистрибуции</div>
+  <div class="mechgrid">
+    <div class="mcard">
+      <span class="ml">Когда показываем ленту</span>
+      <p>Все условия совпадают: назначение - <b>дом или частый жилой адрес</b> (не работа, аэропорт, ТЦ); <b>ETA ≥ время доставки Лавки + буфер</b>, чтобы «к приезду» было выполнимо; адрес в зоне доставки; в дарксторе есть товар и курьеры к приезду.</p>
+    </div>
+    <div class="mcard">
+      <span class="ml">Сигналы таргетинга</span>
+      <p><b>Гео</b> - тип точки, регулярность маршрута «домой» как уверенность. <b>История</b> - последний заказ, давность. <b>Время</b> - вечер под ужин, пятница под выходные, погода. <b>Контекст</b> - длительность поездки, будни или выходной.</p>
+    </div>
+    <div class="mcard">
+      <span class="ml">Кому НЕ показываем</span>
+      <p>Поездки не домой, короткие и вне зоны доставки. Кто уже заказал Лавку или Еду сегодня вечером. Частый «дисмиссер» - закрывал N раз, уходим в затухание. Новый или недоверенный аккаунт - фрод-риск для оплаты.</p>
+    </div>
+    <div class="mcard">
+      <span class="ml">Частота показа</span>
+      <p>Это <b>повторяющаяся потребность</b> (ужин - каждый вечер), а не разовое промо, поэтому не прячем надолго. Один блок на поездку, не дублируем с другими подсказками. Закрыл - пропадает до следующей поездки; листает мимо раз за разом - сворачиваем в тонкую строку, а не выключаем совсем. Уже заказал сегодня - не предлагаем снова.</p>
+    </div>
+  </div>
+
+  <div class="oneengine">
+    <span class="ml">Один движок — разные интенты, берем ГЕО прибытия, как основной признак</span>
+    <p>Это <b>контекстный движок дистрибуции</b>, а не одна карточка Лавки: дом → продукты к приезду, аэропорт → показываем отели, возможность забронировать прямо из ленты, едет в больницу, или из больницы → показываем товары из аптеки, едет в ТЦ → показываем Маркет. Масштабируется на другие точки назначения.</p>
+  </div>
+</div></section>
+
+<!-- CUT -->
+<section id="cut"><div class="wrap">
+  <div class="ov">Что НЕ делаем</div>
+  <div class="lead">Очевидные расширения идеи, которые я сознательно отрезала</div>
+
+  <div class="cutlist">
+    <div class="cutrow"><div class="x">01</div><div class="c"><b>Автозаказ и автооплата без подтверждения</b><p>Соблазн: "Лавка сама приедет к дому, ничего не нажимаешь". Отрезала: доверие к автономной транзакции в индустрии не решено - даже Яндекс оставляет финальное подтверждение пользователю. Риск ошибочных списаний и потери контроля перевешивает удобство. Оставляю явный тап "Заказать".</p></div></div>
+
+    <div class="cutrow"><div class="x">02</div><div class="c"><b>Сразу раскатать движок на все интенты</b><p>Соблазн: аэропорт → отели, ТЦ → Маркет, жара → вода, и так десятки веток сразу. Отрезала: размывает фокус и качество. Начинаю с одного флагмана, где сигнал сильный и attach доказуем на holdout, и расширяю по подтверждённому uplift, а не верой в идею.</p></div></div>
+
+    <div class="cutrow"><div class="x">04</div><div class="c"><b>Сделать карточку витриной из нескольких сервисов</b><p>Соблазн: показать сразу Лавку + Еду + аптеку "на выбор". Отрезала: это возвращает проблему findability из кейса 2. Один best-action под интент бьёт сильнее, чем меню из пяти вариантов.</p></div></div>
+
+    <div class="cutrow"><div class="x">05</div><div class="c"><b>Поставить оффер на главную "всем подряд"</b><p>Соблазн: ради охвата вынести предложение баннером на главную. Отрезала: без контекста это шум - и ровно тот анти-паттерн, который запрещает задание. Сила механики именно в привязке к моменту.</p></div></div>
+
+    <div class="cutrow"><div class="x">06</div><div class="c"><b>Вшивать скидку в карточку по умолчанию</b><p>Соблазн: "дать промокод в каждую карточку - конверсия вырастет". Отрезала: это повтор ошибки кейса 5 - платить там, где спрос и так есть. Оффер - рычаг для колеблющихся, а не дефолт; в флагмане он не нужен (спрос уже сформирован поездкой).</p></div></div>
+
+    <div class="cutrow"><div class="x">07</div><div class="c"><b>Чинить навигацию, таксономию и онбординг заодно</b><p>Соблазн: раз уж трогаем главную - поправить и кластер C (кейсы 1, 2, 4). Отрезала: это другой фундаментальный трек с другим скоупом и владельцем. Смешивать - размывать и движок, и фундамент. Чиню отдельно.</p></div></div>
+  </div>
+</div></section>
+
+<!-- METRICS -->
+<section id="metrics"><div class="wrap">
+  <div class="ov">Метрики и риск</div>
+  <div class="lead">Топ-3 метрики на первые 3 месяца</div>
+  <div class="mcards">
+    <div class="mc"><div class="n">01</div><h4>Attach rate (главная)</h4><p>Доля домашних поездок с заказом Лавки или Еды "к приезду". Меряем uplift против holdout - чтобы видеть инкрементальность, а не перенос.</p></div>
+    <div class="mc"><div class="n">02</div><h4>Рост 2+ сервисов</h4><p>Доля пользователей с двумя сервисами в когорте "такси-моно". Прямое попадание в северную звезду - кросс-сервис.</p></div>
+    <div class="mc"><div class="n">03</div><h4>Обещание "к приезду"</h4><p>Доля доставок, попавших в ETA ± окно, и dismiss rate карточки. Guardrail доверия: без него первые две метрики токсичны.</p></div>
+  </div>
+  <div class="risk">
+    <b>Главный риск - каннибализация вместо инкрементальности.</b> Не переносим ли заказы Лавки, которые случились бы и так, просто внутрь такси? <b>Ловим:</b> holdout-группа и измерение общего объёма Лавки в когорте, а не только attach в поездке. Если общий объём не растёт, а только перетекает - это не победа. Вторично - доверие: "к приезду" это обещание времени; показываем только при ETA с буфером и держим guardrail по попаданию в окно.
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  Тестовое задание · продакт внутренней дистрибуции Яндекс Go · 2025
+</div></footer>
+
+<div class="lb" id="lb" onclick="this.classList.remove('show')"><img id="lbimg" src="" alt=""></div>
+<script>
+  document.querySelectorAll('.shots img').forEach(img=>{
+    img.addEventListener('click',()=>{
+      document.getElementById('lbimg').src = img.src;
+      document.getElementById('lb').classList.add('show');
+    });
+  });
+
+  // scroll-spy for the rotated side nav
+  const navlinks = [...document.querySelectorAll('.sidenav a')];
+  const ids = navlinks.map(a=>a.getAttribute('href').slice(1));
+  const spy = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        navlinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+e.target.id));
+      }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ids.forEach(id=>{const el=document.getElementById(id); if(el) spy.observe(el);});
+
+  // screenshot gallery switcher (arrows + dots)
+  document.querySelectorAll('.shots').forEach(strip=>{
+    const items = [...strip.children];
+    if(items.length < 2) return;
+    const gal = document.createElement('div'); gal.className='gallery';
+    strip.parentNode.insertBefore(gal, strip); gal.appendChild(strip);
+    const ctrls = document.createElement('div'); ctrls.className='gal-ctrls';
+    const prev = document.createElement('button'); prev.className='gal-arrow'; prev.type='button'; prev.textContent='‹';
+    const next = document.createElement('button'); next.className='gal-arrow'; next.type='button'; next.textContent='›';
+    const dots = document.createElement('div'); dots.className='gal-dots';
+    items.forEach((_,i)=>{const d=document.createElement('span'); d.className='gal-dot'+(i===0?' active':''); d.dataset.i=i; dots.appendChild(d);});
+    ctrls.append(prev,dots,next); gal.appendChild(ctrls);
+    const step = ()=> (items[0].getBoundingClientRect().width || 200) + 12;
+    function update(){
+      const atEnd = strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 6;
+      const i = atEnd ? dots.children.length - 1 : Math.round(strip.scrollLeft/step());
+      [...dots.children].forEach((d,j)=>d.classList.toggle('active', j===i));
+      prev.disabled = strip.scrollLeft < 6;
+      next.disabled = atEnd;
+    }
+    function toggleCtrls(){ ctrls.style.display = (strip.scrollWidth <= strip.clientWidth + 6) ? 'none' : 'flex'; }
+    prev.onclick=()=>strip.scrollBy({left:-step(),behavior:'smooth'});
+    next.onclick=()=>strip.scrollBy({left:step(),behavior:'smooth'});
+    [...dots.children].forEach(d=>d.onclick=()=>strip.scrollTo({left:d.dataset.i*step(),behavior:'smooth'}));
+    strip.addEventListener('scroll',()=>requestAnimationFrame(update));
+    window.addEventListener('resize',()=>{toggleCtrls();update();});
+    toggleCtrls(); update();
+  });
+</script>
+</body>
+</html>

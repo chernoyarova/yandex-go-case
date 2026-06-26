@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Концепты · продукты к приезду</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1F1E1C; --ink-2:#83807A; --ink-3:#B2AFA8;
+    --line:#ECEAE5; --line-2:#E0DDD6;
+    --ya:#FFCC00; --lavka:#4AA7E0; --lavka-d:#1E7FBE;
+    --green:#3DBB6B; --bg:#F4F2EE;
+    --body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;padding:36px 20px 80px;display:flex;flex-direction:column;align-items:center;gap:26px}
+
+  h1{font-size:21px;font-weight:700;letter-spacing:-.02em;text-align:center}
+  h1 span{color:var(--ink-2);font-weight:500;display:block;font-size:14px;margin-top:6px}
+
+  /* segmented switcher */
+  .switcher{display:flex;gap:6px;background:#fff;border:1px solid var(--line-2);border-radius:999px;padding:5px;flex-wrap:wrap;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.05)}
+  .switcher button{font-family:var(--body);font-size:13.5px;font-weight:600;color:var(--ink-2);background:none;border:none;cursor:pointer;padding:9px 16px;border-radius:999px;transition:.18s;white-space:nowrap}
+  .switcher button:hover{color:var(--ink)}
+  .switcher button.active{background:var(--ink);color:#fff}
+
+  /* phone */
+  .phone{width:392px;max-width:96vw;border-radius:46px;background:#000;padding:11px;box-shadow:0 30px 70px rgba(0,0,0,.22)}
+  .screen{position:relative;border-radius:36px;overflow:hidden;background:#fff;height:792px}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:128px;height:30px;background:#000;border-radius:0 0 18px 18px;z-index:40}
+  .status{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:16px 26px 0;font-size:15px;font-weight:600;z-index:30}
+  .status .r{display:flex;gap:6px;align-items:center;font-size:13px}
+
+  /* map */
+  .map{position:relative;height:330px;background:
+      radial-gradient(circle at 30% 30%, #EAF1E6, transparent 60%),
+      linear-gradient(135deg,#EEEDE7,#E7EAE2);
+    overflow:hidden}
+  .map .road{position:absolute;background:#fff;opacity:.7}
+  .map .r1{top:120px;left:-40px;width:480px;height:14px;transform:rotate(-8deg)}
+  .map .r2{top:60px;left:240px;width:14px;height:320px;transform:rotate(10deg)}
+  .map .r3{top:230px;left:-20px;width:430px;height:11px;transform:rotate(6deg)}
+  .map svg{position:absolute;inset:0;width:100%;height:100%}
+  .plus{position:absolute;top:64px;right:18px;background:linear-gradient(90deg,#FF3D77,#7B61FF);color:#fff;font-weight:700;font-size:13px;border-radius:999px;padding:7px 13px;display:flex;align-items:center;gap:6px;z-index:20}
+  .back{position:absolute;left:18px;bottom:18px;width:46px;height:46px;border-radius:50%;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;font-size:22px;z-index:20}
+  .pin{position:absolute;z-index:15;display:flex;flex-direction:column;align-items:center}
+  .pin .b{width:54px;height:54px;border-radius:16px;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;font-size:25px}
+  .pin.home{top:96px;right:96px}
+  .pin.car{top:78px;left:54px;font-size:30px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.2))}
+  /* lavka pin (concept 2) */
+  .pin.lavka{top:150px;right:150px;opacity:0;transform:translate(28px,18px);transition:.7s cubic-bezier(.4,1.3,.5,1)}
+  .pin.lavka .b{background:var(--lavka);color:#fff}
+  .pin.lavka .lab{margin-top:5px;font-size:10.5px;font-weight:700;color:var(--lavka-d);background:#fff;padding:2px 7px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+
+  /* trip card */
+  .card{position:relative;margin-top:-26px;background:#fff;border-radius:26px 26px 0 0;padding:24px 22px 18px;z-index:18;box-shadow:0 -8px 24px rgba(0,0,0,.05)}
+  .eta{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .eta h2{font-size:25px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+  .eta h2 .ar{color:var(--ink-3);font-size:18px}
+  .eta .sub{font-size:14.5px;color:var(--ink-2);margin-top:3px}
+  .plate{text-align:right}
+  .plate .num{font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .plate .num sup{font-size:11px;color:var(--ink-2)}
+  .plate .car{font-size:24px}
+
+  /* inline nudge (concept 3) */
+  .inline{display:none;align-items:center;gap:10px;margin-top:16px;padding-top:15px;border-top:1px solid var(--line);font-size:15px;font-weight:600;color:var(--lavka-d);cursor:pointer}
+  .inline .ar{margin-left:auto;color:var(--ink-3)}
+  .inline b{color:var(--ink)}
+
+  .actions{display:flex;justify-content:space-around;margin-top:20px}
+  .act{display:flex;flex-direction:column;align-items:center;gap:9px;color:var(--ink-2);font-size:13.5px}
+  .act .ic{width:62px;height:62px;border-radius:50%;background:#F1EFEB;display:flex;align-items:center;justify-content:center;font-size:24px;position:relative}
+  .act .ava{background-size:cover;background-position:center;background-image:linear-gradient(135deg,#caa,#a87)}
+  .act .badge{position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--line-2);font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px}
+  .stars{display:flex;justify-content:space-around;gap:6px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:30px;color:#E2DFD8}
+
+  /* dock (concept 2) */
+  .dock{display:none;align-items:center;gap:12px;margin:10px 14px 0;background:#fff;border:1px solid var(--line-2);border-radius:16px;padding:14px 16px;box-shadow:0 8px 22px rgba(0,0,0,.07);position:relative;z-index:19}
+  .dock .em{font-size:22px}
+  .dock .tx{font-size:14px;font-weight:600;line-height:1.3}
+  .dock .tx b{color:var(--lavka-d)}
+  .dock .go{margin-left:auto;background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:9px 14px;border-radius:10px;white-space:nowrap}
+
+  /* feed */
+  .feed{padding:16px 14px 30px;background:#fff}
+  /* concept 1 card */
+  .lavka-card{display:none;border:1.5px solid var(--lavka);background:linear-gradient(180deg,#F2F9FE,#fff);border-radius:20px;padding:18px}
+  .lavka-card .top{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--lavka-d);text-transform:uppercase;letter-spacing:.04em}
+  .lavka-card h3{font-size:19px;font-weight:700;letter-spacing:-.02em;margin:10px 0 4px}
+  .lavka-card .desc{font-size:14px;color:var(--ink-2)}
+  .lavka-card .set{display:flex;align-items:center;gap:13px;margin:16px 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}
+  .lavka-card .set .emj{font-size:26px;background:#F1F8FD;width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+  .lavka-card .set .info{font-size:13.5px;color:var(--ink-2);line-height:1.4}
+  .lavka-card .set .info b{color:var(--ink);font-size:14.5px;display:block;font-weight:600}
+  .lavka-card .set .price{margin-left:auto;font-size:16px;font-weight:700}
+  .lavka-card .cta{display:block;text-align:center;background:var(--ya);color:#000;font-size:16px;font-weight:700;padding:15px;border-radius:14px}
+  .lavka-card .eta-note{text-align:center;font-size:12.5px;color:var(--ink-2);margin-top:10px}
+
+  /* market rail (current) */
+  .rail{display:none;grid-template-columns:1fr 1fr;gap:13px}
+  .rail .it .ph{aspect-ratio:1;border-radius:16px;background:#EFEDE9 center/cover}
+  .rail .it h4{font-size:14px;font-weight:500;margin:9px 2px 4px;line-height:1.25}
+  .rail .it .pr{font-size:15px;font-weight:700;color:var(--green);margin:0 2px}
+  .rail .it .pr s{color:var(--ink-3);font-weight:400;font-size:13px}
+
+  /* concept 4 timebar */
+  .timebar{display:none;border:1.5px solid var(--ya);background:linear-gradient(180deg,#FFFDF3,#fff);border-radius:20px;padding:18px}
+  .timebar .top{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9A7B00}
+  .timebar h3{font-size:18px;font-weight:700;letter-spacing:-.02em;margin:8px 0 14px;line-height:1.25}
+  .timebar .bar{height:12px;border-radius:99px;background:#EFEDE7;overflow:hidden}
+  .timebar .bar i{display:block;height:100%;width:37%;border-radius:99px;background:linear-gradient(90deg,#FFCC00,#FFB300)}
+  .timebar .legend{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2);margin:9px 2px 16px}
+  .timebar .legend b{color:var(--ink)}
+  .timebar .cta{display:block;text-align:center;background:var(--ya);color:#000;font-size:16px;font-weight:700;padding:15px;border-radius:14px}
+
+  /* concept 5 chips */
+  .chips{display:none}
+  .chips .hd{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:700;margin-bottom:14px}
+  .chips .hd .ct{font-size:13px;font-weight:600;color:var(--lavka-d);background:#EAF5FC;padding:5px 11px;border-radius:99px}
+  .chips .row{display:flex;flex-wrap:wrap;gap:9px}
+  .chips .chip{font-size:14px;font-weight:600;color:var(--ink);background:#fff;border:1.5px solid var(--line-2);border-radius:99px;padding:10px 15px;cursor:pointer;user-select:none;transition:.12s}
+  .chips .chip.on{background:var(--lavka);border-color:var(--lavka);color:#fff}
+  .chips .cta{display:block;text-align:center;background:var(--ya);color:#000;font-size:16px;font-weight:700;padding:15px;border-radius:14px;margin-top:18px}
+
+  /* concept 6 live activity */
+  .liveact{display:none;position:absolute;top:9px;left:50%;transform:translateX(-50%);z-index:50;background:#000;color:#fff;border-radius:22px;width:344px;max-width:93%;padding:12px 15px;align-items:center;gap:10px;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+  .liveact .l{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;line-height:1.2}
+  .liveact .l .em{font-size:18px}
+  .liveact .go{margin-left:auto;background:var(--lavka);color:#fff;font-size:13px;font-weight:700;padding:9px 13px;border-radius:13px;white-space:nowrap}
+
+  /* scenario: feed head */
+  .feedhead{display:none;align-items:center;justify-content:space-between;gap:10px;font-size:16px;font-weight:700;margin-bottom:15px;line-height:1.25}
+  .feedhead .d{font-size:12.5px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+  /* новичок: product grid */
+  .prodgrid{display:none;grid-template-columns:1fr 1fr;gap:13px}
+  .prod{border:1px solid var(--line);border-radius:18px;padding:12px;position:relative;background:#fff}
+  .prod .img{aspect-ratio:1.2;border-radius:12px;background:#F4F2EE;display:flex;align-items:center;justify-content:center;font-size:46px;margin-bottom:10px}
+  .prod h4{font-size:14px;font-weight:500;line-height:1.25;margin:0 0 8px;min-height:2.4em}
+  .prod .pr{font-size:16px;font-weight:700}
+  .prod .pr s{font-size:12.5px;color:var(--ink-3);font-weight:400;margin-left:5px}
+  .prod .add{position:absolute;right:12px;bottom:12px;width:40px;height:40px;border-radius:50%;background:var(--ya);color:#000;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1;transition:.12s}
+  .prod .add.on{background:var(--ink);color:#fff}
+  /* старичок: last cart */
+  .lastcart{display:none;border:1.5px solid var(--lavka);background:linear-gradient(180deg,#F2F9FE,#fff);border-radius:20px;padding:18px}
+  .lastcart .top{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--lavka-d)}
+  .lastcart h3{font-size:19px;font-weight:700;letter-spacing:-.02em;margin:9px 0 14px}
+  .lastcart .items{display:flex;flex-direction:column;gap:11px;margin-bottom:16px}
+  .lastcart .li{display:flex;align-items:center;gap:12px;font-size:14.5px}
+  .lastcart .li .e{font-size:22px;width:42px;height:42px;border-radius:11px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+  .lastcart .li .n{color:var(--ink)}
+  .lastcart .li .p{margin-left:auto;font-weight:600}
+  .lastcart .cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ya);color:#000;font-size:16px;font-weight:700;padding:15px;border-radius:14px}
+  .lastcart .cta b{font-weight:700}
+  /* sticky cart bar (новичок) */
+  .cartbar{position:absolute;left:0;right:0;bottom:0;z-index:46;transform:translateY(115%);transition:.3s cubic-bezier(.3,1,.4,1);background:var(--ink);color:#fff;display:flex;align-items:center;gap:14px;padding:16px 20px}
+  .cartbar.show{transform:none}
+  .cartbar .sum b{font-size:17px;font-weight:700}
+  .cartbar .sum span{display:block;font-size:12px;font-weight:500;color:#B9B6AF;margin-top:2px}
+  .cartbar .go{margin-left:auto;background:var(--ya);color:#000;font-weight:700;font-size:15px;padding:13px 20px;border-radius:12px;white-space:nowrap}
+
+  /* visibility per variant */
+  .screen[data-v="now"] .rail{display:grid}
+  .screen[data-v="c1"] .lavka-card{display:block}
+  .screen[data-v="c2"] .rail{display:grid}
+  .screen[data-v="c2"] .dock{display:flex}
+  .screen[data-v="c2"] .pin.lavka{opacity:1;transform:translate(0,0)}
+  .screen[data-v="c3"] .rail{display:grid}
+  .screen[data-v="c3"] .inline{display:flex}
+  .screen[data-v="c4"] .timebar{display:block}
+  .screen[data-v="c5"] .chips{display:block}
+  .screen[data-v="c6"] .rail{display:grid}
+  .screen[data-v="c6"] .liveact{display:flex}
+  .screen[data-v="c6"] .notch{opacity:0}
+  .screen[data-v="new"] .fh-new{display:flex}
+  .screen[data-v="new"] .prodgrid{display:grid}
+  .screen[data-v="old"] .fh-old{display:flex}
+  .screen[data-v="old"] .lastcart{display:block}
+
+  .caption{max-width:560px;text-align:center;color:var(--ink-2);font-size:15px;line-height:1.6}
+  .caption b{color:var(--ink);font-weight:600}
+  .caption .tag{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--lavka-d);background:#EAF5FC;padding:5px 11px;border-radius:999px;margin-bottom:10px}
+</style>
+</head>
+<body>
+  <h1>Продукты к приезду <span>Один экран поездки · 3 способа встроить фичу</span></h1>
+
+  <div class="switcher" id="sw">
+    <button data-v="now">Сейчас</button>
+    <button data-v="c1" class="active">1 · Карточка вместо реки</button>
+    <button data-v="c2">2 · Приедут вместе</button>
+    <button data-v="c3">3 · Строка в карточке</button>
+    <button data-v="c4">4 · Таймбар</button>
+    <button data-v="c5">5 · Чипсы</button>
+    <button data-v="c6">6 · Живая активность</button>
+    <button data-v="new">👤 Новичок</button>
+    <button data-v="old">⭐ Старичок</button>
+  </div>
+
+  <div class="phone">
+    <div class="screen" data-v="c1" id="screen">
+      <div class="notch"></div>
+      <div class="liveact"><span class="l"><span class="em">🚕</span> <b>19 мин</b> · Kia Rio</span><span class="go">🛍 + к приезду</span></div>
+      <div class="status"><span>9:41</span><span class="r">·11 ▮▮▮ 🔋</span></div>
+
+      <!-- MAP -->
+      <div class="map">
+        <span class="road r1"></span><span class="road r2"></span><span class="road r3"></span>
+        <svg viewBox="0 0 392 330" preserveAspectRatio="none">
+          <path d="M80 96 C 150 130, 150 60, 230 120" fill="none" stroke="#34C759" stroke-width="7" stroke-linecap="round"/>
+          <path d="M225 116 C 250 135, 255 120, 286 122" fill="none" stroke="#FF3B30" stroke-width="7" stroke-linecap="round"/>
+        </svg>
+        <div class="plus">0 ⊕</div>
+        <div class="pin car">🚗</div>
+        <div class="pin home"><div class="b">🏁</div></div>
+        <div class="pin lavka"><div class="b">🛍</div><div class="lab">Лавка</div></div>
+        <div class="back">←</div>
+      </div>
+
+      <!-- TRIP CARD -->
+      <div class="card">
+        <div class="eta">
+          <div>
+            <h2>Осталось ехать 19 мин <span class="ar">❯</span></h2>
+            <div class="sub">белый Kia Rio</div>
+          </div>
+          <div class="plate"><div class="num">В611УТ<sup>790</sup></div><div class="car">🚕</div></div>
+        </div>
+
+        <!-- concept 3 -->
+        <div class="inline">🛍 Успеем привезти продукты <b>к 10:00</b> <span class="ar">❯</span></div>
+
+        <div class="actions">
+          <div class="act"><div class="ic ava"><span class="badge">4.75</span></div>Александр</div>
+          <div class="act"><div class="ic">🛡</div>Безопасность</div>
+          <div class="act"><div class="ic">☰</div>Детали</div>
+        </div>
+        <div class="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+      </div>
+
+      <!-- concept 2 dock -->
+      <div class="dock">
+        <span class="em">🚕➕🛍</span>
+        <span class="tx">Приедут вместе <b>к 10:00</b><br>ваш набор из Лавки</span>
+        <span class="go">Собрать</span>
+      </div>
+
+      <!-- FEED -->
+      <div class="feed">
+        <!-- concept 1 -->
+        <div class="lavka-card">
+          <div class="top">🏠 Дома через 19 минут</div>
+          <h3>Лавка привезёт продукты к приезду</h3>
+          <div class="desc">Доставим к ~10:00 — заедут вместе с такси.</div>
+          <div class="set">
+            <span class="emj">🥛</span>
+            <span class="info"><b>Ваш обычный набор</b>молоко, хлеб, бананы, яйца +2</span>
+            <span class="price">1 240 ₽</span>
+          </div>
+          <span class="cta">Собрать корзину →</span>
+          <div class="eta-note">Можно докинуть или убрать перед заказом</div>
+        </div>
+
+        <!-- concept 4 timebar -->
+        <div class="timebar">
+          <div class="top">🏠 Будете дома в 10:00</div>
+          <h3>Соберите корзину, пока едете — Лавка успеет к двери</h3>
+          <div class="bar"><i></i></div>
+          <div class="legend"><span>Такси в пути</span><span><b>осталось 19 мин</b></span></div>
+          <span class="cta">Собрать за 1 минуту →</span>
+        </div>
+
+        <!-- concept 5 chips -->
+        <div class="chips">
+          <div class="hd">🛍 Что привезти домой?<span class="ct">корзина · 3 · 640 ₽</span></div>
+          <div class="row">
+            <span class="chip on">Молоко ✓</span>
+            <span class="chip on">Хлеб ✓</span>
+            <span class="chip on">Бананы ✓</span>
+            <span class="chip">+ Кофе</span>
+            <span class="chip">+ Яйца</span>
+            <span class="chip">+ Сыр</span>
+            <span class="chip">+ Вода</span>
+          </div>
+          <span class="cta">Оформить — 640 ₽ к 10:00</span>
+        </div>
+
+        <!-- новичок: feed -->
+        <div class="feedhead fh-new">🛍 Успеем привезти продукты к вашему приезду <span class="d">доставка ~30 мин</span></div>
+        <div class="prodgrid">
+          <div class="prod"><div class="img">🥛</div><h4>Молоко Простоквашино 3.2%</h4><div class="pr">89 ₽ <s>109 ₽</s></div><button class="add" data-price="89">+</button></div>
+          <div class="prod"><div class="img">🍞</div><h4>Хлеб Бородинский</h4><div class="pr">54 ₽</div><button class="add" data-price="54">+</button></div>
+          <div class="prod"><div class="img">🥚</div><h4>Яйца С1, 10 шт</h4><div class="pr">129 ₽ <s>159 ₽</s></div><button class="add" data-price="129">+</button></div>
+          <div class="prod"><div class="img">🍌</div><h4>Бананы, 1 кг</h4><div class="pr">79 ₽</div><button class="add" data-price="79">+</button></div>
+        </div>
+
+        <!-- старичок: last cart -->
+        <div class="feedhead fh-old">🏠 Дома в 10:00 — ваша последняя корзина</div>
+        <div class="lastcart">
+          <div class="top">🛍 Лавка · повторить заказ</div>
+          <h3>Привезём к приезду, к ~10:00</h3>
+          <div class="items">
+            <div class="li"><span class="e">🥛</span><span class="n">Молоко Простоквашино 3.2%</span><span class="p">89 ₽</span></div>
+            <div class="li"><span class="e">🍞</span><span class="n">Хлеб Бородинский</span><span class="p">54 ₽</span></div>
+            <div class="li"><span class="e">🍌</span><span class="n">Бананы, 1 кг</span><span class="p">79 ₽</span></div>
+            <div class="li"><span class="e">🥚</span><span class="n">Яйца С1, 10 шт</span><span class="p">129 ₽</span></div>
+          </div>
+          <span class="cta">Перейти в корзину · <b>351 ₽</b></span>
+        </div>
+
+        <!-- current market rail -->
+        <div class="rail">
+          <div class="it"><div class="ph" style="background-image:url('assets/c10-11.png')"></div><h4>IKEA Обувница, Бамбук</h4><div class="pr">2 497 ₽ <s>3 000 ₽</s></div></div>
+          <div class="it"><div class="ph"></div><h4>Сумка кросс-боди</h4><div class="pr">1 571 ₽ <s>5 000 ₽</s></div></div>
+        </div>
+      </div>
+
+      <div class="cartbar" id="cartbar">
+        <div class="sum"><b>0 ₽</b><span>0 товаров · к 10:00</span></div>
+        <span class="go">Перейти в корзину</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="caption" id="cap"></div>
+
+<script>
+  var caps = {
+    now: ['Сейчас','Под карточкой водителя — <b>товарная река Маркета</b>: обувница IKEA, сумка, реклама. Контекст «еду домой» пойман, но слот живёт мимо интента.'],
+    c1: ['Вариант 1 · Карточка вместо реки','Тот же слот, <b>контент по интенту</b>: «Дома через 19 минут → продукты к приезду». Префилл «ваш обычный набор» из последней Лавки, время доставки уже под прибытие. Самый дешёвый — поверхность уже в проде.'],
+    c2: ['Вариант 2 · Приедут вместе','Самый «магический». На карте к флажку-дому <b>подъезжает пин Лавки</b> — такси и продукты сходятся в одну точку. Под карточкой — док-плашка «приедут вместе к 10:00». Появляется ближе к приезду.'],
+    c3: ['Вариант 3 · Строка в карточке','Минимально инвазивно: нудж <b>прямо под ETA</b>, привязан к живому времени. Тап разворачивает корзину. Не добавляет новый блок — встроен в карточку поездки.'],
+    c4: ['Вариант 4 · Таймбар','Поездка как окно. Прогресс-бар поездки = дедлайн для заказа: «соберите, пока едете — Лавка успеет к двери». Ближе к дому тон срочнее. Использует <b>само время поездки</b> как драйвер.'],
+    c5: ['Вариант 5 · Быстрые чипсы','Набор в один тап прямо на экране — чипсы из «обычно беру», счётчик и сумма растут вживую. <b>Самый низкий порог</b>: отметить пару штук пальцем за светофор, чек-аут одной кнопкой.'],
+    c6: ['Вариант 6 · Живая активность','Live-Activity / Dynamic Island: нудж живёт <b>над приложением</b> — на локскрине, пока юзер свернул Go в мессенджеры. Ловит вышедшего из приложения. Дороже — отдельная ставка, не quick win.'],
+    new: ['Сценарий · Новичок','Истории нет — нечего повторять. Под звёздочками: «успеем привезти к приезду», ниже <b>лента товаров</b>. Добавляешь в корзину → снизу всплывает <b>сумма + «Перейти в корзину»</b>. Знакомим с Лавкой через попутный заказ.'],
+    old: ['Сценарий · Старичок','История есть. Сразу <b>последняя корзина</b> целиком + одна кнопка «Перейти в корзину». Минимум действий — повторить привычный заказ к приезду.']
+  };
+  var sw = document.getElementById('sw'), screen = document.getElementById('screen'), cap = document.getElementById('cap');
+  function set(v){
+    screen.dataset.v = v;
+    [].forEach.call(sw.children, function(b){ b.classList.toggle('active', b.dataset.v===v); });
+    cap.innerHTML = '<span class="tag">'+caps[v][0]+'</span><br>'+caps[v][1];
+    if(typeof updateCart==='function') updateCart();
+  }
+  sw.addEventListener('click', function(e){ if(e.target.dataset.v) set(e.target.dataset.v); });
+  var cart={count:0,sum:0}, bar=document.getElementById('cartbar');
+  function updateCart(){
+    bar.querySelector('b').textContent=cart.sum+' \u20BD';
+    var w=cart.count%10===1&&cart.count%100!==11?'товар':(cart.count%10>=2&&cart.count%10<=4&&(cart.count%100<10||cart.count%100>=20)?'товара':'товаров');
+    bar.querySelector('span').textContent=cart.count+' '+w+' \u00B7 к 10:00';
+    bar.classList.toggle('show', cart.count>0 && screen.dataset.v==='new');
+  }
+  document.querySelectorAll('.prod .add').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(b.classList.contains('on')){ b.classList.remove('on'); b.textContent='+'; cart.count--; cart.sum-=+b.dataset.price; }
+      else { b.classList.add('on'); b.textContent='\u2713'; cart.count++; cart.sum+=+b.dataset.price; }
+      updateCart();
+    });
+  });
+  document.querySelectorAll('.chips .chip').forEach(function(c){ c.addEventListener('click', function(){ c.classList.toggle('on'); }); });
+  set('new');
+</script>
+</body>
+</html>
